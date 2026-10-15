@@ -1,0 +1,1301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Code Recall</title>
+<meta name="description" content="Flashcards from Cody's CareerFoundry projects">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Code Recall">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#e9edf2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11161d" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one column study desk. A ruled index card is the hero; deck shelf and progress sit below it. */
+:root {
+  --bg: #e9edf2;
+  --fg: #1a2330;
+  --muted: #5b6878;
+  --card: #fffffd;
+  --rule: #d6e2f0;
+  --margin: #e4a3a3;
+  --accent: #2b55c9;
+  --accent-ink: #ffffff;
+  --line: #c9d2dd;
+  --chip: #dde4ed;
+  --good: #1f7a4d;
+  --good-bg: #dcf1e5;
+  --miss: #b23a2f;
+  --miss-bg: #f8e0dc;
+  --code-bg: #f1f4f8;
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161d; --fg: #e6ebf2; --muted: #95a2b3; --card: #1a212b; --rule: #243041;
+    --margin: #6b3a3d; --accent: #7d9cff; --accent-ink: #0d1320; --line: #2c3746; --chip: #232c38;
+    --good: #6fd29e; --good-bg: #173527; --miss: #ff8f83; --miss-bg: #3d1f1c; --code-bg: #131920;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161d; --fg: #e6ebf2; --muted: #95a2b3; --card: #1a212b; --rule: #243041;
+  --margin: #6b3a3d; --accent: #7d9cff; --accent-ink: #0d1320; --line: #2c3746; --chip: #232c38;
+  --good: #6fd29e; --good-bg: #173527; --miss: #ff8f83; --miss-bg: #3d1f1c; --code-bg: #131920;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; -webkit-text-size-adjust: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 17px; line-height: 1.5; }
+.wrap { max-width: 720px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 22px; }
+
+header { display: flex; align-items: end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: 2rem; letter-spacing: -0.02em; margin: 0; line-height: 1; }
+h1 span { color: var(--accent); }
+.tagline { margin: 6px 0 0; color: var(--muted); font-size: 0.92rem; }
+.stats { display: flex; gap: 18px; font-variant-numeric: tabular-nums; }
+.stat b { display: block; font-family: var(--font-display); font-size: 1.4rem; line-height: 1; }
+.stat small { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
+
+.decks { display: flex; min-width: 0; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.controls { display: grid; gap: 10px; min-width: 0; }
+.modes { display: inline-flex; justify-self: start; background: var(--chip); border-radius: 10px; padding: 3px; gap: 3px; }
+.mode-btn { font: inherit; font-size: 0.88rem; font-weight: 700; border: 0; background: transparent; color: var(--muted); padding: 7px 14px; border-radius: 8px; cursor: pointer; }
+.mode-btn[aria-pressed="true"] { background: var(--card); color: var(--fg); box-shadow: 0 1px 2px rgba(20, 30, 50, 0.15); }
+.opts { display: grid; gap: 8px; }
+.opt { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; text-align: left; font: inherit; font-size: 0.97rem; line-height: 1.4; background: var(--card); color: var(--fg); border: 1.5px solid var(--line); border-radius: 10px; padding: 11px 12px; cursor: pointer; }
+.opt:not(:disabled):hover { border-color: var(--accent); }
+.opt .letter { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--chip); font-family: var(--font-display); font-weight: 600; font-size: 0.82rem; }
+.opt:disabled { cursor: default; opacity: 0.6; }
+.opt.right { opacity: 1; border-color: var(--good); background: var(--good-bg); }
+.opt.right .letter { background: var(--good); color: var(--card); }
+.opt.wrong { opacity: 1; border-color: var(--miss); background: var(--miss-bg); }
+.opt.wrong .letter { background: var(--miss); color: var(--card); }
+.verdict { font-weight: 700; }
+.verdict.yes { color: var(--good); }
+.verdict.no { color: var(--miss); }
+.deck-btn { flex: none; border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 0.88rem; cursor: pointer; white-space: nowrap; }
+.deck-btn[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.deck-btn .n { color: var(--muted); margin-left: 6px; font-variant-numeric: tabular-nums; }
+.deck-btn[aria-pressed="true"] .n { color: inherit; opacity: 0.7; }
+
+/* The index card */
+.card { position: relative; background: var(--card); border-radius: 6px; box-shadow: 0 1px 0 var(--line), 0 10px 30px -12px rgba(20, 30, 50, 0.25);
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 31px, var(--rule) 31px, var(--rule) 32px);
+  background-position: 0 58px; padding: 18px 20px 20px 44px; min-height: 340px; display: flex; flex-direction: column; gap: 14px; }
+.card::before { content: ""; position: absolute; top: 0; bottom: 0; left: 28px; width: 2px; background: var(--margin); }
+.card-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; min-height: 26px; }
+.deck-label { font-family: var(--font-display); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); }
+.box-pips { display: flex; gap: 4px; }
+.box-pips i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.box-pips i.on { background: var(--good); }
+.q { font-family: var(--font-display); font-weight: 600; font-size: 1.32rem; line-height: 1.3; margin: 0; text-wrap: balance; }
+.a { border-top: 2px dashed var(--line); padding-top: 14px; display: grid; gap: 12px; min-width: 0; }
+.a p { margin: 0; }
+pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.55; }
+code { font-family: var(--font-mono); }
+.src { font-family: var(--font-mono); font-size: 0.74rem; color: var(--muted); margin-top: auto; overflow-wrap: anywhere; }
+.src::before { content: "from your code · "; font-family: var(--font-body); }
+
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.actions .reveal { grid-column: 1 / -1; }
+button.big { font: inherit; font-weight: 700; font-size: 1rem; border-radius: 10px; padding: 14px; cursor: pointer; border: 1px solid transparent; }
+.reveal { background: var(--accent); color: var(--accent-ink); }
+.miss { background: var(--miss-bg); color: var(--miss); border-color: var(--miss) !important; }
+.good { background: var(--good-bg); color: var(--good); border-color: var(--good) !important; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.kbd { color: var(--muted); font-size: 0.78rem; text-align: center; margin: 0; }
+
+.done { text-align: center; display: grid; gap: 10px; justify-items: center; padding-top: 30px; }
+.done h2 { font-family: var(--font-display); margin: 0; font-size: 1.5rem; }
+.done p { margin: 0; color: var(--muted); max-width: 40ch; }
+.link-btn { font: inherit; background: none; border: 1px solid var(--line); color: var(--fg); border-radius: 999px; padding: 8px 16px; cursor: pointer; }
+
+section h3 { font-family: var(--font-display); font-size: 1rem; margin: 0 0 10px; }
+.shelf { display: grid; gap: 8px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 52px; gap: 12px; align-items: center; font-size: 0.9rem; }
+.bar { height: 8px; background: var(--chip); border-radius: 4px; overflow: hidden; display: flex; }
+.bar .m { background: var(--good); }
+.bar .l { background: var(--accent); opacity: 0.55; }
+.row .pct { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.legend { display: flex; gap: 14px; color: var(--muted); font-size: 0.78rem; margin-top: 8px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.sync { color: var(--muted); font-size: 0.78rem; }
+@media (prefers-reduced-motion: no-preference) { .card { transition: transform .18s ease; } .card.flip { transform: rotate(-0.6deg); } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Code<span>Recall</span></h1>
+      <p class="tagline">Flashcards from your CareerFoundry projects</p>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="s-due">0</b><small>to study</small></div>
+      <div class="stat"><b id="s-learn">0</b><small>learning</small></div>
+      <div class="stat"><b id="s-master">0</b><small>mastered</small></div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="modes" id="modes" role="group" aria-label="Study mode"></div>
+    <nav class="decks" id="decks" aria-label="Choose a deck"></nav>
+  </div>
+
+  <main id="study"></main>
+
+  <section>
+    <h3>Progress by course section</h3>
+    <div class="shelf" id="shelf"></div>
+    <div class="legend"><span><i style="background:var(--good)"></i>mastered (box 4+)</span><span><i style="background:var(--accent);opacity:.55"></i>learning</span><span class="sync" id="sync">Progress saves on this phone and works offline</span></div>
+  </section>
+</div>
+
+<script type="text/plain" id="cards">
+=== HTML & CSS | PortfolioWebsite/css/normalize.css
+Q: What does normalize.css do, and why did your portfolio include it?
+A: It smooths out the small differences in how each browser styles elements by default, so your own CSS starts from the same baseline everywhere.
+M: Makes default browser styles consistent | Compresses CSS so pages load faster | Resets every element to display: block | Adds vendor prefixes automatically
+
+=== HTML & CSS | PortfolioWebsite/css/style.production.css
+Q: How do you define and use a CSS custom property (variable)?
+A: Define it on :root with two dashes, then read it with var(). Change it once and every use updates.
+```
+:root { --button-bg-color: #2d5bd7; }
+.btn  { background-color: var(--button-bg-color); }
+```
+M: Define --name on :root, read it with var(--name) | Define $name anywhere, read it with $name | Define @name on :root, read it with get(@name) | Define --name on body, read it with use(--name)
+
+=== HTML & CSS | PortfolioWebsite/css/style.production.css
+Q: In a flex container, what does flex-wrap: wrap do?
+A: Lets items move onto a new line when they run out of room, instead of all squeezing onto one row.
+M: Lets items move onto a new line when out of room | Wraps the text inside each item onto a new line | Adds a border around the flex container | Stops items from shrinking below their size
+
+=== HTML & CSS
+Q: Flexbox or CSS Grid: which is for one direction and which is for two?
+A: Flexbox lays things out in one direction (a row OR a column). Grid handles rows AND columns at the same time.
+M: Flexbox is one direction; Grid is rows and columns | Grid is one direction; Flexbox is rows and columns | Both handle only one direction at a time | Flexbox is for text; Grid is for images
+
+=== HTML & CSS
+Q: What is a media query, and what is it used for?
+A: A CSS block that only applies when a condition is true, usually screen width. It's the core tool of responsive design.
+```
+@media (max-width: 600px) {
+  nav { flex-direction: column; }
+}
+```
+M: CSS that applies only when a condition like screen width is true | A JavaScript call that loads smaller images on phones | An HTML tag that embeds video or audio | A CSS rule that animates elements on scroll
+
+=== HTML & CSS
+Q: Name the four layers of the CSS box model, inside to outside.
+A: Content, padding, border, margin.
+M: Content, padding, border, margin | Content, margin, border, padding | Padding, content, margin, border | Margin, padding, content, border
+
+=== HTML & CSS
+Q: What does box-sizing: border-box change?
+A: The width you set includes padding and border, so adding padding no longer makes the element wider than you asked.
+M: The width you set includes padding and border | The width you set includes the margin | The border is drawn outside the margin | Padding is ignored when sizing the element
+
+=== HTML & CSS
+Q: What is semantic HTML? Give four examples.
+A: Tags that describe what the content is, which helps screen readers and search engines: header, nav, main, section, article, footer.
+M: Tags that describe content, like header, nav, main, footer | Tags that only change looks, like b, i, font, center | Generic containers like div and span | Tags that run code, like script and noscript
+
+=== HTML & CSS | codysFlix-client/.../movie-card.jsx
+Q: Why should every img have an alt attribute?
+A: Screen readers read it aloud, and it shows if the image fails to load. Your MovieCard uses alt={movie.Title}.
+M: Screen readers read it, and it shows if the image fails | It makes the image load faster | It only sets the hover tooltip | The image won't appear without it
+
+=== HTML & CSS
+Q: Rank these selectors from weakest to strongest specificity: id, element, class, inline style.
+A: element < class (also attributes, pseudo-classes) < id < inline style.
+M: element < class < id < inline style | class < element < id < inline style | inline style < id < class < element | id < class < element < inline style
+
+=== HTML & CSS
+Q: position: relative vs position: absolute?
+A: relative nudges an element from its normal spot and becomes the anchor for absolute children. absolute takes the element out of the flow and positions it against the nearest positioned ancestor.
+M: relative shifts from its normal spot; absolute is placed against the nearest positioned ancestor | relative is placed against the window; absolute against its parent always | They're the same, except absolute ignores z-index | absolute shifts from its normal spot; relative leaves the flow
+
+=== HTML & CSS
+Q: px vs em vs rem?
+A: px is fixed. em is relative to the parent's font size (it compounds). rem is relative to the root html font size, so it's predictable. Prefer rem for sizing.
+M: px is fixed; em follows the parent font; rem follows the root font | px follows the root font; em is fixed; rem follows the parent | All three are fixed sizes | em and rem are identical
+
+=== HTML & CSS | PortfolioWebsite/stylelint.config.js
+Q: What does a linter like stylelint do?
+A: Scans your code for errors and style-rule violations before they reach the browser.
+M: Scans code for errors and style-rule violations | Minifies code for production | Runs your unit tests | Converts SCSS into CSS
+
+=== HTML & CSS | To-do-list-app/js/script.js
+Q: In jQuery, what does $("#input").val() return?
+A: The current value of the element whose id is "input" (here, the text typed into the to-do box).
+M: The current value of the element with id "input" | Every element with the class "input" | The HTML inside the element | How many input elements are on the page
+
+=== HTML & CSS | To-do-list-app/js/script.js
+Q: What does li.toggleClass("strike") do?
+A: Adds the "strike" class if it's missing, removes it if it's there. You used it to cross out a to-do on double-click.
+M: Adds the class if missing, removes it if present | Always adds the class | Always removes the class | Swaps it with the previous class
+
+=== JavaScript | Pokemon-pokedex/js/script.js
+Q: What is an IIFE, and why was your pokeDex wrapped in one?
+A: An Immediately Invoked Function Expression runs as soon as it's defined. It kept pokemonList private and exposed only the functions you returned.
+```
+let pokeDex = (function () {
+  let pokemonList = [];
+  function add(p) { pokemonList.push(p); }
+  function getAll() { return pokemonList; }
+  return { add, getAll };
+})();
+```
+M: A function that runs right away and keeps pokemonList private | A function that runs on every click | A class that must be created with new | A loop that loads every Pokémon at once
+
+=== JavaScript
+Q: var vs let vs const?
+A: var is function-scoped and can be redeclared (avoid it). let is block-scoped and can be reassigned. const is block-scoped and can't be reassigned, though objects and arrays it points to can still change.
+M: var is function-scoped; let can be reassigned; const can't be reassigned | All three are block-scoped and behave the same | const objects and arrays can never change at all | let is function-scoped; var is block-scoped
+
+=== JavaScript | Pokemon-pokedex/js/script.js
+Q: What does fetch() return, and why do you call .json() after it?
+A: fetch() returns a Promise of a Response. .json() reads the body and parses it, and it returns a Promise too, which is why there are two .then() steps.
+```
+fetch(pokeweb)
+  .then(r => r.json())
+  .then(json => { /* use data */ })
+  .catch(e => console.error(e));
+```
+M: A Promise of a Response; .json() parses the body and is also a Promise | The parsed JSON data, ready to use | A Response you parse with JSON.parse | An XMLHttpRequest object
+
+=== JavaScript | Pokemon-pokedex/js/script.js
+Q: In loadDetails, why return Promise.resolve() when the Pokémon is already loaded?
+A: So the function always returns a Promise. The caller can write loadDetails(item).then(...) whether or not it needed to fetch.
+M: So it always returns a Promise the caller can .then() | To cancel the earlier fetch | To clear the cached details | To make the code run synchronously
+
+=== JavaScript
+Q: forEach vs map?
+A: forEach just runs a function on each item and returns undefined. map returns a NEW array built from what the function returns.
+M: map returns a new array; forEach returns undefined | forEach returns a new array; map returns undefined | Both return new arrays | map changes the original array in place
+
+=== JavaScript | Pokemon-pokedex/js/script.js
+Q: What does the in operator check in 'name' in pokemon?
+A: Whether the object has a property with that key.
+M: Whether the object has that property | Whether the value is inside an array | Whether the variable is defined globally | Whether the property's value is truthy
+
+=== JavaScript | Pokemon-pokedex/js/script.js
+Q: Why write addEventListener('click', () => showDetails(pokemon)) instead of addEventListener('click', showDetails(pokemon))?
+A: The second one CALLS showDetails immediately and passes its result. The arrow function passes a function to run later, on click.
+M: Without it, showDetails runs immediately instead of on click | Arrow functions run faster than regular ones | addEventListener only accepts arrow functions | It stops the event from bubbling up
+
+=== JavaScript | Pokemon-pokedex/js/script.js
+Q: What does String(25).padStart(3, '0') produce?
+A: "025". You used it to label Pokémon as #001, #025 and so on.
+M: "025" | "250" | "0025" | "25"
+
+=== JavaScript
+Q: == vs ===?
+A: == converts types before comparing ("5" == 5 is true). === checks value AND type ("5" === 5 is false). Use ===.
+M: === checks value and type; == converts types first | == checks value and type; === converts types first | They behave exactly the same | === only works on numbers
+
+=== JavaScript
+Q: How is an arrow function different from a regular function?
+A: Shorter syntax, and it has no this of its own: it uses this from the surrounding code.
+M: It's shorter and has no this of its own | It can't take parameters | It's always async | It's hoisted to the top of the file
+
+=== JavaScript | messenger-app/components/Chat.js
+Q: What does destructuring do here?
+A: It pulls those three properties out of route.params into variables in one line.
+```
+const { name, background, userID } = route.params;
+```
+M: Pulls name, background and userID out of route.params into variables | Deletes those three properties from route.params | Copies route.params into a new object | Renames route.params
+
+=== JavaScript | meet/src/api.js
+Q: What does [...new Set(array)] do?
+A: A Set keeps only unique values; spreading it back into [] gives an array without duplicates. You used it to get the unique list of cities.
+M: An array with the duplicates removed | An array sorted alphabetically | A Set object, not an array | An array without its first item
+
+=== JavaScript | messenger-app/components/Chat.js
+Q: What does { ...message } create?
+A: A shallow copy of the object, so you can change the copy without changing the original.
+M: A shallow copy of message | A reference to the same object | A deep copy, including nested objects | An array of message's values
+
+=== JavaScript | meet/src/App.js
+Q: async/await vs .then(): what's the difference?
+A: Same Promises underneath. await pauses inside an async function until the Promise settles, so the code reads top to bottom. Use try/catch for errors.
+M: Same Promises; await reads top to bottom and uses try/catch for errors | await runs the code on another thread | .then() has no way to handle errors | An async function returns a plain value, not a Promise
+
+=== JavaScript | meet/src/api.js
+Q: What does tokenCheck?.error do if tokenCheck is null?
+A: Optional chaining returns undefined instead of throwing "Cannot read properties of null".
+M: It returns undefined instead of throwing an error | It throws a clearer error message | It returns false | It creates tokenCheck as an empty object
+
+=== JavaScript | codysFlix-client/.../main-view.jsx
+Q: Why JSON.stringify before localStorage.setItem, and JSON.parse after getItem?
+A: localStorage only stores strings. stringify turns the user object into text; parse turns it back into an object.
+M: localStorage only stores strings | localStorage only stores numbers | It encrypts the data | It's required on HTTPS sites
+
+=== JavaScript | codysFlix-client/.../main-view.jsx
+Q: How does your movie search filter by title?
+A: filter keeps items where the callback returns true; includes checks for a substring. Lowercasing both makes it case-insensitive.
+```
+movies.filter(m =>
+  m.Title.toLowerCase().includes(searchQuery.toLowerCase()))
+```
+M: filter keeps matching movies; includes checks the title contains the search text | map transforms titles; find returns every match | includes sorts the movies by title | filter removes only the first match
+
+=== JavaScript
+Q: What is a template literal?
+A: A string in backticks that can hold ${expressions} and span multiple lines.
+M: A backtick string that can hold ${expressions} and span lines | A string in single quotes | A reusable HTML template tag | A JSON string
+
+=== Node & Express | movie_api/index.js
+Q: What is Express?
+A: A small Node.js framework for building web servers: you define routes (app.get, app.post...) and middleware.
+M: A small Node.js framework for routes and middleware | A database for storing JSON | A frontend library for building UIs | A testing framework for Node
+
+=== Node & Express | movie_api/index.js
+Q: What is middleware in Express? Name three you used.
+A: Functions that run on each request before your route handler. You used bodyParser.json() (reads JSON bodies), morgan (logs requests) and cors() (allows other origins).
+M: Functions that run on each request first, like bodyParser, morgan and cors | The database models, Movie and User | Frontend components that call the API | The files served from the public folder
+
+=== Node & Express | movie_api/index.js
+Q: What is CORS, and why did your API need it?
+A: Browsers block requests to a different origin unless the server allows it. Your React app on Netlify called the API on Heroku, so the API used app.use(cors()).
+M: Browsers block requests to other origins unless the server allows them | It encrypts traffic between client and server | It compresses JSON responses | It limits how many requests a user can make
+
+=== Node & Express | movie_api/index.js
+Q: req.params vs req.body vs req.query?
+A: params = values in the path (/users/:Username). body = data sent in a POST/PUT. query = values after ? in the URL.
+M: params from the path, body from POST/PUT data, query from after the ? | params from after the ?, body from the path, query from headers | All three come from the request body | params from cookies, body from headers, query from the path
+
+=== Node & Express | movie_api/index.js
+Q: Match the HTTP verbs to CRUD.
+A: POST = Create, GET = Read, PUT (or PATCH) = Update, DELETE = Delete.
+M: POST create, GET read, PUT update, DELETE delete | GET create, POST read, PUT delete, DELETE update | PUT create, GET read, POST update, DELETE delete | POST create, GET read, PATCH delete, PUT update
+
+=== Node & Express | movie_api/index.js
+Q: What do these status codes mean: 200, 201, 400, 401, 404, 422, 500?
+A: 200 OK, 201 Created, 400 Bad request, 401 Unauthorized (not logged in), 404 Not found, 422 Validation failed (your express-validator errors), 500 Server error.
+M: 201 Created, 401 Unauthorized, 422 Validation failed | 201 Redirect, 401 Not found, 422 Server error | 201 OK, 401 Banned, 422 Timeout | 201 Created, 401 Server error, 422 Not found
+
+=== Node & Express | movie_api/index.js
+Q: How did you validate a new user's input?
+A: express-validator rules in the route, then validationResult(req). If there are errors, return 422.
+```
+check("Email", "Email does not appear to be valid").isEmail(),
+...
+let errors = validationResult(req);
+if (!errors.isEmpty()) {
+  return res.status(422).json({ errors: errors.array() });
+}
+```
+M: express-validator check() rules, then validationResult and a 422 | Mongoose required fields only, returning a 500 | A regex in the React form only | bcrypt checks the input before saving
+
+=== Node & Express | movie_api/index.js
+Q: What does app.use(express.static("public")) do?
+A: Serves files in the public folder directly, like your documentation.html.
+M: Serves the files in the public folder directly | Makes every route read-only | Caches API responses | Freezes the Express settings
+
+=== Node & Express | movie_api/auth.js
+Q: Why read secrets from process.env instead of writing them in the code?
+A: Environment variables keep secrets (database URI, JWT_SECRET) out of GitHub and let each environment use its own values.
+M: Keeps secrets out of GitHub and lets each environment use its own values | Makes the code run faster | Encrypts the database automatically | Express routes don't work without it
+
+=== Node & Express
+Q: require() and module.exports: what do they do?
+A: module.exports picks what a file shares; require() loads it into another file. (CommonJS; the newer style is import/export.)
+M: module.exports picks what a file shares; require() loads it | require() shares a file; module.exports loads it | Both download packages from npm | They only work in the browser
+
+=== Node & Express
+Q: dependencies vs devDependencies in package.json?
+A: dependencies are needed to run the app. devDependencies are only for building or testing it (like parcel or jest).
+M: dependencies run the app; devDependencies are only for building or testing | devDependencies are only used in production | dependencies are optional extras | They're the same thing
+
+=== Node & Express | movie_api/out/
+Q: What is JSDoc?
+A: /** ... */ comments with tags like @param and @returns that a tool turns into a documentation website (your out/ folder).
+M: /** */ comments that a tool turns into a docs website | A JSON format for API data | A linter for JavaScript | A testing library
+
+=== MongoDB & Auth
+Q: How is MongoDB different from a SQL database?
+A: MongoDB stores flexible JSON-like documents in collections. SQL stores rows in tables with a fixed schema and joins tables together.
+M: MongoDB stores JSON-like documents; SQL stores rows in tables | MongoDB needs a fixed schema; SQL doesn't | SQL stores documents; MongoDB stores tables | They're the same except for the query language
+
+=== MongoDB & Auth | movie_api/models.js
+Q: What are a Mongoose schema and model?
+A: The schema describes a document's shape and rules. The model is built from it and is what you query (Movies.find(), Users.create()).
+```
+let movieSchema = mongoose.Schema({
+  Title: { type: String, required: true },
+  Genre: { Name: String, Description: String },
+  Actors: [String]
+});
+let Movie = mongoose.model('Movie', movieSchema);
+```
+M: The schema describes the shape; the model is what you query | The model describes the shape; the schema is what you query | The schema is the database connection | They're two names for the same thing
+
+=== MongoDB & Auth | movie_api/models.js
+Q: In your models, Genre is embedded but Favorites is referenced. What's the difference?
+A: Embedded data lives inside the document. A reference stores an ObjectId that points to a document in another collection.
+```
+Favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Movie' }]
+```
+M: Embedded data lives inside the document; a reference stores an ObjectId | Embedded data lives in another collection; references are inline | A reference copies the whole movie into the user | Embedded data can't be queried
+
+=== MongoDB & Auth | movie_api/index.js
+Q: What does { new: true } do in findOneAndUpdate?
+A: Returns the document AFTER the update. Without it you get the old version.
+M: Returns the document after the update | Creates a new document instead of updating | Only updates fields that are new | Returns the old version
+
+=== MongoDB & Auth | movie_api/index.js
+Q: You add favorites with $push. What does $addToSet do differently?
+A: $push always appends, so the same movie can be added twice. $addToSet only adds it if it's not already there. $pull removes it.
+M: $addToSet only adds it if it isn't already there | $addToSet adds it to the start of the array | $addToSet replaces the whole array | $addToSet removes the item
+
+=== MongoDB & Auth | movie_api/models.js
+Q: Why hash passwords, and what does the 10 in bcrypt.hashSync(password, 10) mean?
+A: If the database leaks, attackers get hashes, not passwords. 10 is the salt rounds: higher is slower to crack (and slower to compute).
+M: Leaked hashes don't reveal passwords; 10 is the salt rounds | Hashing makes logins faster; 10 is the password length | Hashing compresses passwords; 10 is the max attempts | Hashing is required by Mongo; 10 is days until it expires
+
+=== MongoDB & Auth | movie_api/models.js
+Q: Mongoose statics vs methods?
+A: statics live on the Model (Users.hashPassword(pw)). methods live on each document (user.validatePassword(pw)).
+M: statics live on the Model; methods live on each document | methods live on the Model; statics live on each document | statics only run once | They're the same thing
+
+=== MongoDB & Auth | movie_api/auth.js
+Q: What is a JWT?
+A: A signed token (header.payload.signature). The server signs it at login; later requests send it back and the server checks the signature, without storing a session.
+M: A signed token the server can check without keeping a session | An encrypted cookie that holds the password | A database list of logged-in users | A JavaScript library for JSON
+
+=== MongoDB & Auth | movie_api/passport.js
+Q: What did each Passport strategy do in your API?
+A: LocalStrategy checks username + password at /login. JWTStrategy checks the token on every protected route.
+M: Local checks username and password at login; JWT checks the token on protected routes | Local checks the token; JWT checks the password | Both check the password on every request | JWT is only used for logging out
+
+=== MongoDB & Auth | movie_api/passport.js
+Q: Where does the client put the JWT on each request?
+A: In the Authorization header as a Bearer token. The server reads it with ExtractJWT.fromAuthHeaderAsBearerToken().
+```
+headers: { Authorization: `Bearer ${token}` }
+```
+M: In the Authorization header as a Bearer token | In the URL query string | In the body of every GET request | In a hidden form field
+
+=== MongoDB & Auth | movie_api/index.js
+Q: Why passport.authenticate("jwt", { session: false })?
+A: A token API is stateless: every request proves itself with its token, so there's no server session to keep.
+M: The API is stateless: each request proves itself with its token | Sessions are slower than tokens | It turns off login | It logs the user out after each request
+
+=== MongoDB & Auth | movie_api/index.js
+Q: Authentication vs authorization? Which one is this check?
+A: Authentication = who are you. Authorization = what are you allowed to do. This check is authorization.
+```
+if (req.user.Username !== req.params.Username) {
+  return res.status(400).send("Permission Denied");
+}
+```
+M: Authorization: what you're allowed to do | Authentication: who you are | Validation: whether the input is formatted right | Encryption: hiding the username
+
+=== React | codysFlix-client
+Q: What is JSX?
+A: HTML-like syntax inside JavaScript that compiles to React.createElement calls. Use className instead of class and {} for JavaScript expressions.
+M: HTML-like syntax in JavaScript that compiles to React.createElement | A new language that replaces JavaScript | A JSON format for components | A CSS-in-JS styling tool
+
+=== React
+Q: Props vs state?
+A: Props are passed in by the parent and are read-only. State is owned by the component and changes with a setter, which re-renders it.
+M: Props come from the parent and are read-only; state is owned and changed with a setter | State comes from the parent; props are owned by the component | Both are read-only | Props change with setters; state never changes
+
+=== React | codysFlix-client/.../main-view.jsx
+Q: What does useState return?
+A: An array of two: the current value and a function to update it.
+```
+const [movies, setMovies] = useState([]);
+```
+M: The current value and a function to update it | Just the current value | A setter and a reset function | A Promise of the value
+
+=== React | codysFlix-client/.../main-view.jsx
+Q: When does this effect run?
+A: After the first render, and again whenever token changes. The dependency array [token] controls that.
+```
+useEffect(() => {
+  if (!token) return;
+  fetch(".../movies", { headers: { Authorization: `Bearer ${token}` } })
+    ...
+}, [token]);
+```
+M: After the first render and whenever token changes | Only once, ever | Before every render | Only when the component unmounts
+
+=== React
+Q: What does an empty dependency array [] mean in useEffect? What about no array?
+A: [] runs once after the first render. No array runs after every render.
+M: [] runs once; no array runs after every render | [] runs every render; no array runs once | Both run only once | [] means the effect never runs
+
+=== React | messenger-app/components/Chat.js
+Q: What is the function returned from useEffect for?
+A: Cleanup. It runs before the effect re-runs and when the component unmounts. Your Chat used it to stop the Firestore listener.
+```
+return () => {
+  if (unsubChat) unsubChat();
+};
+```
+M: Cleanup when the effect re-runs or the component unmounts | Sends the effect's result to the parent | Runs before the first render | Retries the effect if it failed
+
+=== React
+Q: Why does React need a key prop when you map over a list?
+A: To track which item is which between renders. Use a stable id like movie._id, not the array index.
+M: So React can tell which item is which between renders | To style each item differently | To sort the list | To make each item clickable
+
+=== React | codysFlix-client/.../main-view.jsx
+Q: What is "lifting state up"? Where did you do it?
+A: Moving state to the nearest shared parent and passing down a callback. MainView owns user and token and gives LoginView an onLoggedIn function.
+M: Moving shared state to the parent and passing down callbacks | Moving state into a global variable | Copying state into every child | Saving state in localStorage
+
+=== React | codysFlix-client/.../login-view.jsx
+Q: What makes this a controlled input?
+A: React state is the single source of truth: value comes from state and onChange updates it.
+```
+<Form.Control value={username}
+  onChange={(e) => setUsername(e.target.value)} />
+```
+M: value comes from state, and onChange updates the state | The input controls React through refs only | The input is disabled until submit | The browser controls the value
+
+=== React | codysFlix-client/.../login-view.jsx
+Q: Why call event.preventDefault() in handleSubmit?
+A: A form submit normally reloads the page. preventDefault stops that so your JavaScript can send the fetch instead.
+M: To stop the page from reloading on submit | To stop the click from bubbling | To clear the form fields | To validate the input
+
+=== React | codysFlix-client/.../main-view.jsx
+Q: Name the React Router v6 pieces you used and what each does.
+A: BrowserRouter wraps the app; Routes picks one Route by path; Route maps a path to an element; Navigate redirects; Link changes pages without reloading; useParams reads :movieId.
+M: Routes picks a Route by path; Navigate redirects; useParams reads :movieId | Navigate fetches data; Route stores state | useParams sets the URL; Link reloads the page | BrowserRouter validates props
+
+=== React | codysFlix-client/.../movie-card.jsx
+Q: What are PropTypes for?
+A: Checking during development that a component gets props of the right type, with warnings in the console when it doesn't.
+M: It checks prop types in development and warns in the console | It converts props to TypeScript | It makes props required at build time | It speeds up rendering
+
+=== React | codysFlix-client/package.json
+Q: What did Parcel do in your React client?
+A: It's a bundler: it combines your JSX, SCSS and imports into files a browser can run, with a dev server.
+M: Bundles JSX, SCSS and imports into files the browser can run | Hosts the app online | Tests React components | Manages app state
+
+=== React | meet/src/App.js
+Q: Why wrap fetchData in useCallback?
+A: Without it, a new function is created every render, and since it's an effect dependency the effect would run forever. useCallback keeps the same function until currentCity or currentNOE change.
+M: It keeps the same function so the effect doesn't re-run every render | It makes fetchData run faster | It caches the API response | It runs fetchData in the background
+
+=== React | meet/src/components/Alert.js
+Q: Your Alert is a class component that InfoAlert extends. What does a class component need?
+A: extends Component, a render() method, props on this.props, and super(props) in the constructor.
+M: extends Component, a render() method, this.props and super(props) | A return statement and useState | A hooks array and useEffect | Only a constructor
+
+=== React
+Q: What problem does Redux solve?
+A: One global store for state many components need. Components dispatch actions; reducers return the new state. (Taught in the myFlix React unit.)
+M: One global store; actions go to reducers that return the new state | It routes between pages | It styles components | It fetches data automatically
+
+=== Angular | myFlix-Angular-client
+Q: What files make up an Angular component, and what does @Component declare?
+A: A .ts class, an .html template and an .scss file. @Component sets the selector (its HTML tag), templateUrl and styleUrls.
+M: .ts, .html and .scss files; @Component sets the selector, templateUrl and styleUrls | One .jsx file; @Component sets the props | Only a .ts file; @Component sets the routes | Only an .html file; @Component sets the API URL
+
+=== Angular | myFlix-Angular-client/src/app/fetch-api-data.service.ts
+Q: What does @Injectable({ providedIn: 'root' }) do?
+A: Makes the service one shared instance for the whole app that Angular can inject anywhere.
+M: One shared instance for the whole app, injectable anywhere | A new instance for every component | It makes the service run on the server | It registers a route
+
+=== Angular | myFlix-Angular-client/src/app/fetch-api-data.service.ts
+Q: What is dependency injection in this line?
+A: Angular creates HttpClient and hands it in. The component asks for what it needs instead of building it.
+```
+constructor(private http: HttpClient) { }
+```
+M: Angular creates HttpClient and passes it in | The component imports and builds HttpClient itself | HttpClient is a global variable | The service extends HttpClient
+
+=== Angular | myFlix-Angular-client/src/app/user-registration-form
+Q: Observable vs Promise?
+A: A Promise gives one value. An Observable can emit many values over time, is lazy (nothing happens until you subscribe), and can be cancelled.
+```
+this.fetchApiData.userRegistration(this.userData).subscribe({
+  next: () => { ... },
+  error: () => { ... }
+});
+```
+M: Observables can emit many values and do nothing until subscribed | Observables give exactly one value, like Promises | Promises can be cancelled; Observables can't | They're identical
+
+=== Angular | myFlix-Angular-client/src/app/fetch-api-data.service.ts
+Q: What does .pipe(catchError(this.handleError)) do?
+A: pipe chains RxJS operators onto an Observable. catchError catches a failed request and turns it into a friendly error.
+M: pipe chains RxJS operators; catchError handles a failed request | It pipes the response into the template | It retries the request forever | It turns the Observable into a Promise
+
+=== Angular | myFlix-Angular-client/src/app/user-registration-form
+Q: What is [(ngModel)], and what module does it need?
+A: Two-way binding: the input updates the property and the property updates the input. It needs FormsModule.
+M: Two-way binding; it needs FormsModule | One-way binding; it needs HttpClientModule | Event binding; it needs RouterModule | Style binding; it needs MatInputModule
+
+=== Angular
+Q: Name Angular's four binding syntaxes.
+A: {{ value }} interpolation, [prop]="x" property binding, (event)="fn()" event binding, [(ngModel)]="x" two-way binding.
+M: {{ }}, [prop], (event), [(ngModel)] | {{ }}, <prop>, @event, ((model)) | ${ }, [prop], {event}, [[model]] | {% %}, [prop], (event), {(model)}
+
+=== Angular | myFlix-Angular-client/src/app/auth.guard.ts
+Q: What does your authGuard do?
+A: A route guard runs before a route opens. Yours lets users with a token through and sends everyone else to /welcome.
+```
+export const authGuard: CanActivateFn = () => {
+  const router = inject(Router);
+  return localStorage.getItem('token') ? true : router.parseUrl('/welcome');
+};
+```
+M: Lets users with a token through and sends others to /welcome | Encrypts the token | Logs every route change | Refreshes the token automatically
+
+=== Angular | myFlix-Angular-client/src/app/app.module.ts
+Q: In an NgModule, declarations vs imports?
+A: declarations = components that belong to this module. imports = other modules you use (HttpClientModule, FormsModule, Angular Material modules).
+M: declarations = this module's components; imports = other modules it uses | declarations = modules; imports = components | Both list services | declarations are for routes
+
+=== Angular
+Q: What does TypeScript add to JavaScript?
+A: Static types (string, Movie[], Observable<User>) checked before the code runs, which catches mistakes early and improves autocomplete.
+M: Static types that are checked before the code runs | Faster performance at runtime | Automatic styling | A replacement for HTML
+
+=== Angular | myFlix-Angular-client/src/app/user-registration-form
+Q: Which Angular Material pieces did you use for the sign-up popup and its message?
+A: MatDialog opens the form as a modal (dialogRef.close() shuts it). MatSnackBar shows the short "Registration successful" message.
+M: MatDialog for the popup, MatSnackBar for the message | MatToolbar and MatIcon | MatCard and MatTooltip | MatInput and MatButton only
+
+=== Angular
+Q: What is ngOnInit?
+A: A lifecycle hook that runs once after Angular sets up the component's inputs. Use it to load data, not the constructor.
+M: Runs once after inputs are set; use it to load data | Runs before the constructor | Runs every time the view changes | Runs when the component is destroyed
+
+=== Testing & PWA | meet
+Q: What is Test-Driven Development (TDD)?
+A: Red, green, refactor: write a failing test, write just enough code to pass it, then clean up.
+M: Write a failing test, make it pass, then clean up | Write the code first, then tests at the end | Test only in production | Write all the tests after deploying
+
+=== Testing & PWA | meet/src/__tests__
+Q: Unit vs integration vs end-to-end tests?
+A: Unit tests one piece alone (CitySearch). Integration tests pieces together (CitySearch inside App). End-to-end drives the real app in a browser (Puppeteer).
+M: Unit = one piece; integration = pieces together; end-to-end = the real app in a browser | Unit = the whole app; end-to-end = one function | Integration tests only check CSS | They're the same thing
+
+=== Testing & PWA | meet/src/__tests__/CitySearch.test.js
+Q: What do describe, test, expect and beforeEach do in Jest?
+A: describe groups tests; test is one case; expect(...).toBe... is the assertion; beforeEach runs setup before every test (you rendered CitySearch there).
+M: describe groups, test is one case, expect asserts, beforeEach sets up | describe asserts, test groups, expect sets up | beforeEach runs once after all tests | expect renders the component
+
+=== Testing & PWA | meet/src/__tests__/CitySearch.test.js
+Q: queryByRole vs getByRole?
+A: queryBy returns null if nothing matches, which is good for checking something is NOT there. getBy throws an error.
+M: queryBy returns null if nothing matches; getBy throws | getBy returns null; queryBy throws | Both throw an error | queryBy only finds text
+
+=== Testing & PWA | meet/src/features
+Q: Why wrap assertions in waitFor()?
+A: Data loads asynchronously. waitFor keeps retrying the assertion until it passes or times out.
+M: It retries the assertion until async data arrives or it times out | It pauses for exactly one second | It waits for a real user to click | It skips the test if it's slow
+
+=== Testing & PWA | meet/src/__tests__/CitySearch.test.js
+Q: How do you simulate a user clicking and typing?
+A: user-event: create a user with userEvent.setup(), then await user.click(el) and await user.type(el, "Berlin").
+M: userEvent.setup(), then await user.click() and user.type() | fireEvent.render() | document.click() inside expect | jest.simulate("click")
+
+=== Testing & PWA | meet/src/features/filterEventsByCity.feature
+Q: What is Gherkin in BDD?
+A: Plain-English test scenarios using Feature, Scenario, Given (setup), When (action), Then (expected result). jest-cucumber connects each step to code.
+```
+Scenario: User can select a city from the suggested list.
+  Given user was typing "Berlin" in the city textbox
+  When the user selects a city from the list
+  Then their city should be changed to that city
+```
+M: Plain-English scenarios written as Given / When / Then | A JavaScript testing library | A CSS framework | A Git branching style
+
+=== Testing & PWA | meet/src/mock-data.js
+Q: Why have mock-data.js?
+A: Tests and local development can run without calling the real Google Calendar API, so they're fast and repeatable.
+M: So tests run without calling the real API | It's the production data | It stores user passwords | It replaces the service worker
+
+=== Testing & PWA | meet/public/manifest.json
+Q: What three things make an app a PWA?
+A: A web app manifest (name, icons, colors), a service worker (offline caching), and HTTPS.
+M: A manifest, a service worker and HTTPS | React, Redux and Node | An app store listing | Bootstrap, jQuery and Ajax
+
+=== Testing & PWA | meet/src/service-worker.js
+Q: What is a service worker?
+A: A script that sits between your app and the network. It can cache files and data so the app loads offline. Yours used Workbox.
+M: A script between the app and the network that can cache for offline | A server that runs your API | A thread that runs animations | A background database
+
+=== Testing & PWA | meet/src/App.js
+Q: How did Meet detect being offline?
+A: navigator.onLine is false when the browser has no connection; you showed a WarningAlert in that case.
+M: navigator.onLine | window.isConnected | document.offline | fetch.status
+
+=== Testing & PWA | meet/src/__tests__/EndToEnd.test.js
+Q: What is Puppeteer?
+A: A library that drives a real Chrome browser from code: open the page, click, read the DOM. Used for end-to-end tests.
+M: It drives a real Chrome browser from code for end-to-end tests | It mocks API responses | It draws charts | It bundles the app
+
+=== Testing & PWA | meet/src/components/CityEventsChart.js
+Q: What library drew Meet's scatter and pie charts?
+A: Recharts, a React charting library made of components like ScatterChart, PieChart and ResponsiveContainer.
+M: Recharts | Chart.js | D3 | matplotlib
+
+=== Serverless & OAuth | meet/auth-server
+Q: What does "serverless" mean, and what is AWS Lambda?
+A: You write functions and the cloud runs them on demand, with no server for you to manage. AWS Lambda is Amazon's service for that, billed per call.
+M: The cloud runs your functions on demand, with no server to manage | A frontend with no backend at all | A database with no tables | Hosting on GitHub Pages
+
+=== Serverless & OAuth | meet/auth-server/serverless.yml
+Q: What does serverless.yml define?
+A: Each function, its handler (handler.getAuthURL), and the HTTP event that triggers it, which becomes an API Gateway URL.
+M: Each function, its handler and the HTTP event that triggers it | The React routes | Your Jest settings | Firebase security rules
+
+=== Serverless & OAuth | meet/src/api.js
+Q: Walk through Meet's OAuth2 flow.
+A: 1) Get the Google auth URL from your Lambda. 2) User signs in and approves. 3) Google redirects back with ?code=. 4) Lambda exchanges the code for an access token. 5) App calls the Calendar API with the token.
+M: Get auth URL → user approves → code comes back → swap code for token → call API | Ask for the Google password → save it → call the API | Call the API first, then log in | Get the token first, then the auth URL
+
+=== Serverless & OAuth | meet/auth-server/handler.js
+Q: Why have a Lambda auth server instead of doing OAuth in the browser?
+A: Exchanging the code needs the CLIENT_SECRET. Anything in the browser is public, so the secret stays on the server.
+M: Swapping the code for a token needs the CLIENT_SECRET, which can't be public | Browsers can't make HTTP requests | Lambda is faster than the browser | Google blocks every browser
+
+=== Serverless & OAuth | meet/auth-server/handler.js
+Q: What shape does a Lambda behind API Gateway return?
+A: An object with statusCode, headers (including CORS) and body as a JSON string.
+```
+return {
+  statusCode: 200,
+  headers: { "Access-Control-Allow-Origin": "*" },
+  body: JSON.stringify({ authUrl })
+};
+```
+M: statusCode, headers and a body that's a JSON string | Just the raw data object | An HTML page | A Promise of a Response
+
+=== React Native | messenger-app
+Q: How is React Native different from React for the web?
+A: Same components, state and hooks, but it renders native UI: View instead of div, Text for all text, StyleSheet.create for styles, TouchableOpacity for buttons.
+M: It uses native components like View, Text and StyleSheet instead of div and CSS | It doesn't use components or state | It uses Angular templates | It shows HTML inside a WebView
+
+=== React Native | messenger-app
+Q: What does Expo give you?
+A: Tools around React Native: run on your phone with Expo Go, no Xcode/Android Studio setup, plus ready APIs like expo-image-picker, expo-location and expo-audio.
+M: Run on your phone with Expo Go plus ready APIs, no Xcode setup | A database for chat apps | A testing library | A CSS framework
+
+=== React Native | messenger-app/App.js
+Q: How did you move from Start to Chat and pass the user's name?
+A: A native stack navigator. navigation.navigate sends params; the Chat screen reads them from route.params.
+```
+navigation.navigate("Chat", { userID, name, background });
+// in Chat:
+const { name, background, userID } = route.params;
+```
+M: navigation.navigate("Chat", {...}), then read route.params | Change window.location to /chat | Pass it through localStorage | Use a global variable
+
+=== React Native | messenger-app/components/Start.js
+Q: How did chat users get an ID without creating an account?
+A: Firebase Anonymous Auth: signInAnonymously(auth) gives each user a uid without email or password.
+M: Firebase signInAnonymously | Email and password sign-up | Google OAuth | A random number saved in AsyncStorage
+
+=== React Native | messenger-app/components/Chat.js
+Q: How did messages update in real time?
+A: A Firestore query plus onSnapshot, which calls your function every time the collection changes.
+```
+const q = query(collection(db, "messages"), orderBy("createdAt", "desc"));
+unsubChat = onSnapshot(q, (snapshot) => { ... });
+```
+M: A Firestore query with onSnapshot | Checking every few seconds with setInterval | Reloading the screen | A WebSocket you wrote yourself
+
+=== React Native | messenger-app/components/Chat.js
+Q: How did you save a new message to Firestore?
+A: addDoc(collection(db, "messages"), newMessages[0]), which adds a document with an auto-generated id.
+M: addDoc(collection(db, "messages"), message) | db.save("messages", message) | A fetch POST to Firestore | setDoc with no collection
+
+=== React Native | messenger-app/components/Chat.js
+Q: How did the chat still show messages offline?
+A: It saved each snapshot to AsyncStorage (JSON string). When offline it loaded the cached messages instead of subscribing.
+M: It saved snapshots to AsyncStorage and loaded them when offline | Firestore saves everything locally by itself | It showed nothing while offline | It saved messages in a cookie
+
+=== React Native | messenger-app/App.js
+Q: How did the app react to losing its connection?
+A: useNetInfo() reports isConnected. When it was false, you called Firestore's disableNetwork(db) and hid the input bar; enableNetwork(db) when back.
+M: useNetInfo, then disableNetwork / enableNetwork | navigator.onLine | A try/catch around send | Expo reconnects on its own
+
+=== React Native | messenger-app/components/CustomActions.js
+Q: Before using the camera, photo library or location, what must an Expo app do?
+A: Ask permission, e.g. ImagePicker.requestCameraPermissionsAsync() or Location.requestForegroundPermissionsAsync(), and check that it was granted.
+M: Ask for permission first and check it was granted | Nothing; Expo handles it | Restart the app | Add an API key
+
+=== React Native | messenger-app/components/Chat.js
+Q: What did Gifted Chat give you?
+A: A ready-made chat UI (bubbles, input bar, send button) with hooks like renderBubble, renderInputToolbar and renderCustomView to customize it.
+M: A ready-made chat UI you customize with render props | A database | Push notifications | A navigation library
+
+=== Python Basics | Intro-To-Python
+Q: Name Python's main built-in data types.
+A: int, float, str, bool, list, tuple, dict, set (and None).
+M: int, float, str, bool, list, tuple, dict, set | int, char, string, array, object | number, text, array, map | int, double, varchar, json
+
+=== Python Basics
+Q: list vs tuple?
+A: A list is mutable (can change) and uses []. A tuple is immutable and uses (). Tuples suit fixed data like a recipe row from the database.
+M: Lists can change and use []; tuples can't and use () | Tuples can change; lists can't | Neither can change | Lists use (); tuples use []
+
+=== Python Basics | Intro-To-Python/.../Exercise_1.3.py
+Q: Why int(input(...)) for cooking time?
+A: input() always returns a string. int() converts it so you can compare it with < 10.
+M: input() always returns a string | input() returns a float | int() checks the spelling | You can't print numbers otherwise
+
+=== Python Basics | Intro-To-Python/.../recipe_mysql.py
+Q: What do .split(", ") and ", ".join(list) do?
+A: split turns "eggs, milk" into ["eggs", "milk"]. join does the reverse, turning a list into one string.
+M: split turns a string into a list; join turns a list into a string | split joins lists; join splits strings | Both remove the commas | split sorts the list
+
+=== Python Basics | Intro-To-Python/.../recipe_mysql.py
+Q: What does enumerate(items, start=1) give you?
+A: Pairs of (number, item) starting at 1, handy for numbered menus.
+```
+for index, ingredient in enumerate(all_ingredients, start=1):
+    print(str(index) + ". " + ingredient)
+```
+M: Numbered (index, item) pairs starting at 1 | The items sorted, starting at 1 | Every other item | The total count
+
+=== Python Basics | Intro-To-Python/.../Exercise_1.3.py
+Q: How did you decide a recipe's difficulty?
+A: An if/elif chain on cooking_time (< 10 minutes) and ingredient count (< 4): Easy, Medium, Intermediate, Hard. The same logic appears in every version of your Recipe app.
+M: if/elif on cooking time (under 10) and ingredient count (under 4) | A random choice | The number of steps in the description | The user's rating
+
+=== Python Basics | Recipe-app/requirements.txt
+Q: What are a virtual environment and requirements.txt for?
+A: A venv keeps each project's packages separate. requirements.txt lists them, so anyone can install them with pip install -r requirements.txt.
+M: Keeps each project's packages separate and lists them to reinstall | Makes Python run faster | Stores secret keys | Runs your tests
+
+=== Python Basics
+Q: What is an f-string?
+A: A string starting with f that fills in {expressions}, like f"Recipe: {name} ({cooking_time} min)".
+M: A string starting with f that fills in {expressions} | A function written as a string | A formatted file | A float turned into a string
+
+=== Python Basics | Intro-To-Python/.../recipe_mysql.py
+Q: Your create_recipe used a bare except:. Why is except ValueError: better?
+A: A bare except catches everything, even typos and Ctrl-C, which hides real bugs. Catching the specific error (like a non-number typed into int()) handles only what you expect.
+M: A bare except hides real bugs; catch only the error you expect | A bare except runs faster | ValueError catches everything anyway | There's no difference
+
+=== Python OOP & Files | Intro-To-Python/.../recipe_oop.py
+Q: What are __init__ and self?
+A: __init__ runs when you create an object and sets up its attributes. self is the object itself, so self.name belongs to that one recipe.
+M: __init__ sets up a new object; self is that object | __init__ deletes the object; self is the class | self is a global variable | __init__ runs on every method call
+
+=== Python OOP & Files | Intro-To-Python/.../recipe_oop.py
+Q: In your Recipe class, ingredients_list = [] sits at class level. What does that mean?
+A: It's a class variable shared by EVERY Recipe, which you used to collect all ingredients. self.ingredients is an instance variable, one per recipe.
+M: A class variable shared by every Recipe | A separate list for each recipe | A constant that can't change | A private variable
+
+=== Python OOP & Files | Intro-To-Python/.../recipe_oop.py
+Q: What does *ingredients mean in add_ingredients(self, *ingredients)?
+A: It accepts any number of arguments and packs them into a tuple: add_ingredients("eggs", "milk", "flour").
+M: Any number of arguments, packed into a tuple | A pointer to a list | Exactly one list argument | Keyword arguments packed into a dict
+
+=== Python OOP & Files | Intro-To-Python/.../recipe_oop.py
+Q: Why write getters and setters like set_cooking_time?
+A: To run logic when a value changes. Your setter recalculated difficulty every time cooking time was set.
+M: To run logic, like recalculating difficulty, when a value changes | Python requires them | They make attributes private | They make access faster
+
+=== Python OOP & Files | Intro-To-Python/.../recipe_app.py
+Q: __str__ vs __repr__?
+A: __str__ is the friendly text print() shows. __repr__ is a short, developer-facing description, shown in the shell and in lists.
+M: __str__ is the friendly print text; __repr__ is for developers | __repr__ is for print; __str__ is for debugging | They're identical | __str__ converts the object to JSON
+
+=== Python OOP & Files
+Q: How does inheritance work in Python?
+A: class Child(Parent): gets the parent's methods. Call super().__init__(...) to run the parent's setup, then add or override what's different.
+M: class Child(Parent), calling super().__init__() for the parent's setup | class Child extends Parent | Child = Parent.copy() | inherit Parent into Child
+
+=== Python OOP & Files
+Q: What is operator overloading?
+A: Defining special methods like __add__, __eq__ or __lt__ so +, == and < work on your own objects.
+M: Special methods like __add__ and __eq__ that make operators work on your objects | Calling a method with too many arguments | Using + on strings | Writing two methods with the same name
+
+=== Python OOP & Files | Intro-To-Python/.../Exercise1-4
+Q: What are the file modes 'r', 'w', 'a', 'rb' and 'wb'?
+A: read, write (replaces the file), append, read binary, write binary.
+M: read, write (replaces), append, read binary, write binary | read, wait, add, raw, web | rewrite, write, append, recursive, binary | read, write, archive, binary, base64
+
+=== Python OOP & Files | Intro-To-Python/.../recipe_input.py
+Q: What does pickle do?
+A: Saves Python objects (lists, dicts) to a binary file and loads them back exactly.
+```
+with open("recipes.bin", "wb") as f:
+    pickle.dump(data, f)
+with open("recipes.bin", "rb") as f:
+    data = pickle.load(f)
+```
+M: Saves Python objects to a binary file and loads them back | Compresses images | Encrypts text files | Converts Python to JSON for the web
+
+=== Python OOP & Files
+Q: Why use with open(...) as f:?
+A: The file is closed automatically when the block ends, even if an error happens.
+M: The file closes automatically, even if there's an error | The file opens faster | It locks the file forever | You can't read a file without it
+
+=== SQL & SQLAlchemy | Intro-To-Python/.../recipe_mysql.py
+Q: What are the steps to run a query with mysql.connector?
+A: connect() → conn.cursor() → cursor.execute(sql) → conn.commit() for changes, or cursor.fetchall() to read rows.
+M: connect → cursor → execute → commit or fetchall | execute → connect → commit | cursor → commit → connect | connect → fetchall → execute
+
+=== SQL & SQLAlchemy | Intro-To-Python/.../recipe_mysql.py
+Q: Why use %s placeholders instead of building the SQL string yourself?
+A: Parameterized queries let the database driver escape the values, which prevents SQL injection.
+```
+sql = "INSERT INTO Recipes (name, cooking_time, ingredients, difficulty) VALUES (%s, %s, %s, %s)"
+cursor.execute(sql, val)
+```
+M: The driver escapes the values, which prevents SQL injection | It makes queries run faster | It's required for numbers | It formats the output
+
+=== SQL & SQLAlchemy
+Q: Write the four basic SQL statements for CRUD.
+A: INSERT INTO t (cols) VALUES (...); SELECT cols FROM t WHERE ...; UPDATE t SET col = x WHERE ...; DELETE FROM t WHERE ...;
+M: INSERT INTO, SELECT ... FROM, UPDATE ... SET, DELETE FROM | ADD, GET, CHANGE, REMOVE | CREATE, READ, UPDATE, DROP | PUSH, FIND, SET, PULL
+
+=== SQL & SQLAlchemy
+Q: How do you find recipes whose ingredients contain "egg"?
+A: WHERE ingredients LIKE '%egg%', where % matches any characters.
+M: WHERE ingredients LIKE '%egg%' | WHERE ingredients = 'egg' | WHERE ingredients HAS 'egg' | WHERE CONTAINS(ingredients, egg)
+
+=== SQL & SQLAlchemy | Intro-To-Python/.../recipe_mysql.py
+Q: What does id INT PRIMARY KEY AUTO_INCREMENT mean?
+A: id uniquely identifies each row, and the database fills it in automatically, counting up.
+M: A unique row id the database fills in automatically | A field the user must type in | An encrypted id | A link to another table
+
+=== SQL & SQLAlchemy
+Q: What is an ORM?
+A: Object-Relational Mapper: you work with Python classes and objects, and it writes the SQL for you. SQLAlchemy and Django's models are ORMs.
+M: You work with Python classes and it writes the SQL | A tool that formats SQL | A database server | A backup tool
+
+=== SQL & SQLAlchemy | Intro-To-Python/.../recipe_app.py
+Q: Name the four SQLAlchemy pieces you set up.
+A: create_engine (the connection), declarative_base (base for your model classes), sessionmaker/session (talks to the DB), Column with types (your table fields).
+M: create_engine, declarative_base, sessionmaker/session, Column | connect, cursor, execute, commit | models, views, urls, admin | Flask, Jinja, WSGI, pip
+
+=== SQL & SQLAlchemy | Intro-To-Python/.../recipe_app.py
+Q: How do you add and query with a SQLAlchemy session?
+A: session.add(obj) then session.commit() to save. session.query(Recipe).filter(Recipe.name.like("%cake%")).all() to read.
+M: session.add() and commit(); session.query(...).filter(...).all() | cursor.insert(); cursor.find() | Recipe.save(); Recipe.objects.all() | db.push(); db.get()
+
+=== Django | Recipe-app
+Q: What does MVT stand for in Django?
+A: Model (data and the database), View (logic that handles a request), Template (the HTML).
+M: Model, View, Template | Model, Viewer, Transfer | Module, View, Test | Main, Visual, Template
+
+=== Django | Recipe-app
+Q: Django project vs app?
+A: The project is the whole site and its settings (recipe_project). Apps are features inside it (recipes, users).
+M: The project is the whole site and settings; apps are features inside it | The app is the whole site; the project is one feature | They're the same thing | Projects only hold templates
+
+=== Django | Recipe-app/manage.py
+Q: Name the manage.py commands you used most.
+A: runserver, startapp, makemigrations, migrate, createsuperuser, test, collectstatic.
+M: runserver, makemigrations, migrate, createsuperuser | npm start, npm test | pip run, pip migrate | django start, django deploy
+
+=== Django
+Q: makemigrations vs migrate?
+A: makemigrations writes migration files describing model changes. migrate applies them to the database.
+M: makemigrations writes migration files; migrate applies them | migrate writes the files; makemigrations applies them | Both just restart the server | makemigrations deletes the database
+
+=== Django | Recipe-app/recipes/models.py
+Q: Which field types does your Recipe model use?
+A: CharField(max_length=50) for short text, FloatField for cooking_time, TextField for long text, ImageField(upload_to='recipes') for the picture.
+M: CharField, FloatField, TextField, ImageField | String, Number, Text, Image | VARCHAR, INT, BLOB, FILE | TextInput, NumberInput, Textarea, FileInput
+
+=== Django | Recipe-app/recipes/models.py
+Q: What does get_absolute_url with reverse do?
+A: Builds the URL for one recipe from the named route, so templates never hard-code paths.
+```
+def get_absolute_url(self):
+    return reverse('recipes:detail', kwargs={'pk': self.pk})
+```
+M: Builds the recipe's URL from the named route | Redirects to the admin | Returns the file path on the server | Downloads the recipe
+
+=== Django | Recipe-app/recipes/urls.py
+Q: Why set app_name = 'recipes' in urls.py?
+A: It namespaces your route names, so you write 'recipes:list' and it can't clash with another app's 'list'.
+M: It namespaces route names, like 'recipes:list' | It sets the site title | It registers the app in settings | It names the database table
+
+=== Django | Recipe-app/recipes/views.py
+Q: Class-based vs function-based views? Which did you use?
+A: Class-based views like ListView and DetailView do common jobs with almost no code. Function views give full control. You used CBVs for list/detail and functions for search and delete.
+M: Class views like ListView do common jobs with little code; function views give full control | Function views can't render templates | Class views can't use URLs | They're identical
+
+=== Django | Recipe-app/recipes/views.py
+Q: How do you require login on a function view vs a class-based view?
+A: Function view: the @login_required decorator. Class-based view: inherit LoginRequiredMixin first, e.g. class RecipeListView(LoginRequiredMixin, ListView).
+M: @login_required for functions; LoginRequiredMixin for class views | LoginRequiredMixin for both | @login_required for both | A setting in urls.py
+
+=== Django | Recipe-app/recipes/views.py
+Q: Why did your delete_recipe view use @require_POST?
+A: A GET link can be followed by crawlers or prefetchers. Accepting only POST (with a CSRF token) means only a real form submit can delete.
+M: Only a real form POST with a CSRF token can delete, not a link | It makes deleting faster | POST is needed to read data | It hides the URL
+
+=== Django | Recipe-app/recipes/views.py
+Q: What does get_object_or_404(Recipe, pk=pk) do?
+A: Returns the recipe, or shows a 404 page instead of crashing when it doesn't exist.
+M: Returns the object, or shows a 404 instead of crashing | Creates the object if it's missing | Quietly returns None | Deletes the object
+
+=== Django
+Q: Name the common Django ORM query calls.
+A: Recipe.objects.all(), .get(id=1) (exactly one or an error), .filter(name__icontains="cake") (a QuerySet), .exclude(), .order_by("name").
+M: .all(), .get(), .filter(name__icontains=...) | find(), findOne(), where() | SELECT(), FROM(), WHERE() | fetch(), query(), search()
+
+=== Django | Recipe-app/recipes/views.py
+Q: Why RecipesSearchForm(request.POST or None)?
+A: On a GET request it makes an empty form; on a POST it's filled with the submitted data. Then check form.is_valid().
+M: An empty form on GET, filled with the data on POST | The form always fails validation | It ignores POST data | It creates a new recipe
+
+=== Django
+Q: What do {{ }}, {% %}, {% url %} and {% csrf_token %} do in templates?
+A: {{ var }} prints a value; {% for %}/{% if %} are logic tags; {% url 'recipes:list' %} builds a link; {% csrf_token %} adds the hidden token every POST form needs.
+M: {{ }} prints; {% %} is logic; {% url %} builds links; {% csrf_token %} protects forms | {{ }} is logic; {% %} prints | Both just print values | {% url %} calls an API
+
+=== Django
+Q: What is CSRF?
+A: Cross-Site Request Forgery: another site tricks your logged-in browser into submitting a form. Django blocks POSTs that lack the secret token.
+M: A forged request from another site that uses your logged-in browser | A broken CSS file | A slow database query | A missing static file
+
+=== Django | Recipe-app/recipes/views.py
+Q: How did you turn search results into a table you could chart?
+A: pandas: recipe_df = pd.DataFrame(qs.values()), then .to_html() for the table and the DataFrame columns for the chart.
+M: pd.DataFrame(qs.values()) | qs.to_dataframe() | pandas.read_sql(Recipe) | DataFrame(Recipe)
+
+=== Django | Recipe-app/recipes/utils.py
+Q: How did you get a matplotlib chart into a Django template?
+A: Save the figure into an in-memory BytesIO buffer as a PNG, base64-encode it, and put it in an img src="data:image/png;base64,...". plt.switch_backend('AGG') draws without a screen.
+M: Save a PNG into a BytesIO buffer, base64-encode it, use it as an img data URI | Save it to disk and email it | Upload it to Heroku | Draw it with JavaScript in the browser
+
+=== Django | Recipe-app/recipes/tests.py
+Q: What does your model test check, and what is setUpTestData?
+A: setUpTestData creates the test recipe once for the class. The tests read field settings through _meta, e.g. that name's max_length is 50 and cooking_time's help_text is 'minutes'.
+M: setUpTestData creates the data once; the tests check fields through _meta | It runs before every web request | It deploys the app | It creates the superuser
+
+=== Django
+Q: How do you show a model in the Django admin?
+A: admin.site.register(Recipe) in the app's admin.py.
+M: admin.site.register(Recipe) | Recipe.admin = True | settings.ADMIN = [Recipe] | urls.admin(Recipe)
+
+=== Django
+Q: Static files vs media files?
+A: Static files are your own CSS, JS and images, shipped with the code. Media files are uploaded by users (recipe pics) and set with MEDIA_URL/MEDIA_ROOT.
+M: Static = your own CSS, JS and images; media = user uploads | Static = user uploads; media = your CSS | They're the same thing | Media files are only videos
+
+=== Django | Recipe-app/Procfile
+Q: What did the Procfile and runtime.txt do for Heroku?
+A: Procfile tells Heroku how to start the app: web: gunicorn recipe_project.wsgi. runtime.txt picks the Python version.
+M: Procfile starts the app with gunicorn; runtime.txt picks the Python version | Procfile lists packages; runtime.txt sets the timezone | Both are only for tests | Procfile sets environment variables
+
+=== Django | Recipe-app/recipe_project/settings.py
+Q: Three settings to check before deploying Django?
+A: SECRET_KEY read from an environment variable (no real fallback in the code), DEBUG = False, and ALLOWED_HOSTS listing your real domain instead of "*".
+M: SECRET_KEY from an env variable, DEBUG = False, real ALLOWED_HOSTS | DEBUG = True, open ALLOWED_HOSTS, a hard-coded key | Only TIME_ZONE and LANGUAGE_CODE | Only INSTALLED_APPS
+
+
+</script>
+
+<script>
+(function () {
+  // ---- parse cards ----
+  function hash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return 'c' + (h >>> 0).toString(36); }
+  const CARDS = [];
+  const blocks = document.getElementById('cards').textContent.split(/^=== /m).slice(1);
+  for (const b of blocks) {
+    const lines = b.split('\n');
+    const [deck, src] = lines[0].split('|').map(s => s && s.trim());
+    let q = '', a = '', code = '', mc = null, mode = null;
+    for (const line of lines.slice(1)) {
+      if (line.startsWith('```')) { mode = mode === 'code' ? 'a' : 'code'; continue; }
+      if (mode === 'code') { code += line + '\n'; continue; }
+      if (line.startsWith('M: ')) { mc = line.slice(3).split(' | ').map(s => s.trim()); mode = null; continue; }
+      if (line.startsWith('Q: ')) { q = line.slice(3); mode = 'q'; continue; }
+      if (line.startsWith('A: ')) { a = line.slice(3); mode = 'a'; continue; }
+      if (line.trim() && mode === 'q') q += ' ' + line.trim();
+      else if (line.trim() && mode === 'a') a += ' ' + line.trim();
+    }
+    if (q) CARDS.push({ id: hash(deck + q), deck, src: src || '', q, a, code: code.replace(/\n+$/, ''), mc });
+  }
+  const DECKS = [...new Set(CARDS.map(c => c.deck))];
+
+  // ---- progress (Leitner boxes) ----
+  const DAY = 864e5;
+  const INTERVAL = [0, 1, 3, 7, 14, 30, 60]; // days until next review, by box
+  const NEW_PER_SESSION = 15;
+  const LS_KEY = 'code-recall-progress';
+  let progress = {};
+  try { progress = JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; } catch (e) { progress = {}; }
+
+  function save() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(progress)); } catch (e) {}
+  }
+
+  // ---- session ----
+  let deckFilter = 'All';
+  try { deckFilter = localStorage.getItem('code-recall-deck') || 'All'; } catch (e) {}
+  if (deckFilter !== 'All' && !DECKS.includes(deckFilter)) deckFilter = 'All';
+  let queue = [], current = null, revealed = false, sessionDone = 0;
+  let studyMode = 'choice', opts = null, picked = null;
+  try { studyMode = localStorage.getItem('code-recall-mode') || 'choice'; } catch (e) {}
+  function choiceMode(c) { return studyMode === 'choice' && c && c.mc && c.mc.length > 1; }
+  function pick(i) {
+    if (revealed || !opts) return;
+    picked = i; revealed = true; render();
+  }
+
+  function inDeck(c) { return deckFilter === 'All' || c.deck === deckFilter; }
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function buildQueue() {
+    const now = Date.now();
+    const due = CARDS.filter(c => inDeck(c) && progress[c.id] && progress[c.id].d <= now);
+    const fresh = CARDS.filter(c => inDeck(c) && !progress[c.id]).slice(0, NEW_PER_SESSION);
+    queue = shuffle(due).concat(fresh);
+    if (current && !queue.includes(current)) current = null;
+    if (!current) { current = queue[0] || null; revealed = false; }
+  }
+  function grade(knew) {
+    const c = current; if (!c) return;
+    const p = progress[c.id] || { b: 0 };
+    p.b = knew ? Math.min(p.b + 1, INTERVAL.length - 1) : 0;
+    p.d = Date.now() + (knew ? INTERVAL[p.b] * DAY : 0);
+    p.t = Date.now();
+    progress[c.id] = p;
+    queue.shift();
+    if (!knew) queue.splice(Math.min(3, queue.length), 0, c); // see it again in a few cards
+    sessionDone++;
+    current = queue[0] || null; revealed = false; opts = null; picked = null;
+    save(); render();
+  }
+
+  // ---- render ----
+  const $ = id => document.getElementById(id);
+  function el(tag, attrs, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) { if (k === 'class') n.className = v; else if (k.startsWith('on')) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v); }
+    for (const k of kids) if (k != null) n.append(k);
+    return n;
+  }
+  function stats(list) {
+    const now = Date.now(); let due = 0, learn = 0, master = 0, fresh = 0;
+    for (const c of list) { const p = progress[c.id]; if (!p) { fresh++; continue; } if (p.b >= 4) master++; else learn++; if (p.d <= now) due++; }
+    return { due, learn, master, fresh };
+  }
+  function render() {
+    const all = stats(CARDS);
+    const scoped = stats(CARDS.filter(inDeck));
+    $('s-due').textContent = scoped.due + Math.min(scoped.fresh, NEW_PER_SESSION);
+    $('s-learn').textContent = all.learn;
+    $('s-master').textContent = all.master + '/' + CARDS.length;
+
+    const modes = $('modes'); modes.replaceChildren();
+    for (const [m, label] of [['choice', 'Multiple choice'], ['flip', 'Flip cards']]) {
+      modes.append(el('button', { class: 'mode-btn', 'aria-pressed': String(studyMode === m), onclick: () => {
+        if (studyMode === m) return;
+        studyMode = m; try { localStorage.setItem('code-recall-mode', m); } catch (e) {}
+        revealed = false; opts = null; picked = null; render();
+      } }, label));
+    }
+
+    const decks = $('decks'); decks.replaceChildren();
+    for (const d of ['All', ...DECKS]) {
+      const n = d === 'All' ? CARDS.length : CARDS.filter(c => c.deck === d).length;
+      decks.append(el('button', { class: 'deck-btn', 'aria-pressed': String(d === deckFilter), onclick: () => {
+        deckFilter = d; try { localStorage.setItem('code-recall-deck', d); } catch (e) {}
+        current = null; buildQueue(); render();
+      } }, d, el('span', { class: 'n' }, String(n))));
+    }
+
+    const study = $('study'); study.replaceChildren();
+    if (!current) {
+      const next = CARDS.filter(inDeck).map(c => progress[c.id]?.d).filter(Boolean).sort((a, b) => a - b)[0];
+      const when = next ? new Date(next).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }) : null;
+      study.append(el('div', { class: 'done' },
+        el('h2', {}, sessionDone ? 'Session complete' : 'Nothing due here'),
+        el('p', {}, (sessionDone ? `You reviewed ${sessionDone} cards. ` : '') + (when ? `The next card in this deck is due ${when}.` : 'Pick another deck above.')),
+        el('button', { class: 'link-btn', onclick: () => { for (const c of CARDS.filter(inDeck)) if (progress[c.id]) progress[c.id].d = Date.now(); save(); buildQueue(); render(); } }, 'Review this deck again now')
+      ));
+    } else {
+      const c = current, box = progress[c.id]?.b || 0;
+      const pips = el('div', { class: 'box-pips', title: 'Box ' + box + ' of 6', 'aria-label': 'Mastery ' + box + ' of 6' });
+      for (let i = 1; i < INTERVAL.length; i++) pips.append(el('i', { class: i <= box ? 'on' : '' }));
+      const card = el('article', { class: 'card' + (revealed ? ' flip' : '') },
+        el('div', { class: 'card-top' }, el('span', { class: 'deck-label' }, c.deck), pips),
+        el('p', { class: 'q' }, c.q));
+      const isChoice = choiceMode(c);
+      if (isChoice) {
+        if (!opts || opts.id !== c.id) opts = { id: c.id, order: shuffle(c.mc.map((_, i) => i)) };
+        const list = el('div', { class: 'opts', role: 'group', 'aria-label': 'Answer choices' });
+        opts.order.forEach((oi, pos) => {
+          let cls = 'opt';
+          if (revealed && oi === 0) cls += ' right';
+          else if (revealed && pos === picked) cls += ' wrong';
+          const b = el('button', { class: cls, onclick: () => pick(pos) }, el('span', { class: 'letter' }, 'ABCD'[pos]), el('span', {}, c.mc[oi]));
+          if (revealed) b.disabled = true;
+          list.append(b);
+        });
+        card.append(list);
+      }
+      if (revealed) {
+        const ans = el('div', { class: 'a' }, el('p', {}, c.a));
+        if (isChoice) ans.prepend(el('p', { class: 'verdict ' + (opts.order[picked] === 0 ? 'yes' : 'no') }, opts.order[picked] === 0 ? 'Correct' : 'Not quite. The right answer is highlighted.'));
+        if (c.code) ans.append(el('pre', {}, el('code', {}, c.code)));
+        card.append(ans);
+      }
+      if (c.src) card.append(el('div', { class: 'src' }, c.src));
+      const actions = el('div', { class: 'actions' });
+      if (isChoice) {
+        if (revealed) actions.append(el('button', { class: 'big reveal', id: 'next', onclick: () => grade(opts.order[picked] === 0) }, 'Next card'));
+      } else if (!revealed) actions.append(el('button', { class: 'big reveal', id: 'reveal', onclick: () => { revealed = true; render(); } }, 'Show answer'));
+      else actions.append(
+        el('button', { class: 'big miss', id: 'miss', onclick: () => grade(false) }, 'Missed it'),
+        el('button', { class: 'big good', id: 'good', onclick: () => grade(true) }, 'Knew it'));
+      study.append(card, actions, el('p', { class: 'kbd' }, `${queue.length} left in this session · ${isChoice ? 'Keyboard: 1\u20134 to answer, Enter for next' : 'Keyboard: space to flip, 1 missed, 2 knew it'}`));
+    }
+
+    const shelf = $('shelf'); shelf.replaceChildren();
+    for (const d of DECKS) {
+      const list = CARDS.filter(c => c.deck === d), s = stats(list), n = list.length;
+      shelf.append(el('div', { class: 'row' },
+        el('span', {}, d),
+        el('div', { class: 'bar' }, el('span', { class: 'm', style: `width:${100 * s.master / n}%` }), el('span', { class: 'l', style: `width:${100 * s.learn / n}%` })),
+        el('span', { class: 'pct' }, Math.round(100 * s.master / n) + '%')));
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (!current || e.metaKey || e.ctrlKey || e.target.closest('input,textarea')) return;
+    if (choiceMode(current)) {
+      if (!revealed && '1234'.includes(e.key) && e.key) pick(+e.key - 1);
+      else if (revealed && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); grade(opts.order[picked] === 0); }
+      return;
+    }
+    if (!revealed && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); revealed = true; render(); }
+    else if (revealed && e.key === '1') grade(false);
+    else if (revealed && e.key === '2') grade(true);
+  });
+
+  buildQueue(); render();
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>

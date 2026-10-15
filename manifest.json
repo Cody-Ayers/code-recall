@@ -1,0 +1,14 @@
+{
+  "name": "Code Recall",
+  "short_name": "Code Recall",
+  "description": "Flashcards from Cody's CareerFoundry projects",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e9edf2",
+  "theme_color": "#2b55c9",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
