@@ -1106,6 +1106,314 @@ Q: Three settings to check before deploying Django?
 A: SECRET_KEY read from an environment variable (no real fallback in the code), DEBUG = False, and ALLOWED_HOSTS listing your real domain instead of "*".
 M: SECRET_KEY from an env variable, DEBUG = False, real ALLOWED_HOSTS | DEBUG = True, open ALLOWED_HOSTS, a hard-coded key | Only TIME_ZONE and LANGUAGE_CODE | Only INSTALLED_APPS
 
+=== Lineup Lab | fantasy-analyzer/README.md
+Q: Trace Lineup Lab's data flow from ESPN to your phone.
+A: A GitHub Actions job runs scripts/fetch.mjs, which calls ESPN's API and saves small snapshot files in site/data/. GitHub Pages serves the site, and analysis.js does all the math in the browser.
+M: ESPN API → fetch.mjs on GitHub Actions → site/data/*.json → math runs in your browser | Browser calls ESPN directly → saves to localStorage → draws the page | ESPN emails a CSV → a Python script → a database → the page | The phone downloads ESPN's full 4.5 MB file every time you open it
+
+=== Lineup Lab | fantasy-analyzer/scripts/fetch.mjs
+Q: Why does Lineup Lab fetch ESPN data on GitHub's servers instead of in the browser?
+A: The ESPN login cookies (espn_s2, SWID) work like a password. On a public website anyone could read them, so they stay in GitHub Secrets and only the workflow uses them.
+M: The login cookies are secret, and a public website can't hide anything | Browsers can't make fetch requests to other sites | GitHub Pages blocks all JavaScript | ESPN only answers requests made from Node.js
+
+=== Lineup Lab | fantasy-analyzer/scripts/espn.js
+Q: ESPN's response is about 4.5 MB per league. What does buildSnapshot() do about it?
+A: It keeps only the fields the analysis needs and gives them short names (n, p, pw, avg...), shrinking it to about 50 KB so the page loads fast on a phone.
+```
+return {
+  id: p.id,
+  n: p.fullName,
+  p: POS[p.defaultPositionId] || '?',
+  pw: r1(projWeek ? projWeek.appliedTotal : 0),
+  ...
+};
+```
+M: Keeps only the fields it needs, with short names, down to about 50 KB | Compresses it with gzip and keeps every field | Splits it into 90 files of 50 KB each | Sends it to Sleeper to be shortened
+
+=== Lineup Lab | fantasy-analyzer/scripts/espn.js
+Q: Why does buildSnapshot(getJSON, ...) take the fetch function as a parameter instead of calling fetch itself?
+A: The caller decides how requests are made. fetch.mjs passes a getJSON that adds the ESPN cookies, so the same file works in Node or a browser, and the cookies only ever go to ESPN.
+M: So the caller controls how requests are made, like adding the ESPN cookies | Because fetch doesn't exist in JavaScript | Parameters make functions run faster | So it can be called without arguments
+
+=== Lineup Lab | .github/workflows/refresh.yml
+Q: What does the cron schedule '17 13 * * *' mean?
+A: The five fields are minute, hour, day of month, month and day of week. So: minute 17 of hour 13 (UTC), every day. 13:17 UTC is 6:17am Pacific.
+M: 13:17 UTC every day | Every 17 minutes for 13 hours | The 17th of every month at 1pm | 1:17pm on Sundays only
+
+=== Lineup Lab | .github/workflows/refresh.yml
+Q: In a GitHub Actions workflow, what does workflow_dispatch add?
+A: A way to start the workflow on demand: a "Run workflow" button on GitHub, and an API endpoint. Lineup Lab's Refresh button calls that endpoint.
+M: A way to run the workflow on demand, by button or API | A schedule that runs every hour | Automatic deploys on every pull request | Email alerts when the workflow fails
+
+=== Lineup Lab | .github/workflows/refresh.yml
+Q: What does git diff --cached --quiet followed by || git commit do?
+A: git diff --quiet succeeds only when nothing changed. The || runs the commit only if it failed, meaning there are changes. So the workflow skips empty commits.
+M: Commits only when the data actually changed | Always commits, even with no changes | Deletes uncommitted changes | Pushes without committing
+
+=== Lineup Lab | fantasy-analyzer/site/index.html
+Q: What does script type="module" let app.js do?
+A: Use import and export between files, like import * as A from './analysis.js'. Modules also run in strict mode and get their own scope instead of sharing globals.
+```
+<script type="module" src="app.js"></script>
+// app.js
+import * as A from './analysis.js';
+```
+M: Use import and export between files | Run on the server instead of the browser | Load before the HTML is read | Skip the browser cache
+
+=== Lineup Lab | fantasy-analyzer/scripts/fetch.mjs
+Q: Why store the Promise, not the result, in getPublicJSON's Map cache?
+A: If two leagues ask for the same URL at once, the second gets the same in-flight Promise, so Sleeper's 5 MB player list downloads once and is shared.
+```
+if (!publicCache.has(url)) {
+  publicCache.set(url, fetch(url).then((r) => r.json()));
+}
+return publicCache.get(url);
+```
+M: Calls that overlap share one download instead of starting two | Promises use less memory than data | A Map can't hold plain objects | So the data expires after 48 hours
+
+=== Lineup Lab | fantasy-analyzer/site/analysis.js
+Q: bestLineup() is a greedy algorithm. What does it do, and why does greedy work here?
+A: Sort players by points, fill each position's slots with the best available, then fill FLEX with the best leftover RB/WR/TE. Taking the best choice at each step gives the best total because FLEX accepts anyone the other slots left over.
+M: Sort by points, fill each position, then FLEX with the best leftover | Try every possible lineup and keep the best | Pick players at random 5,000 times | Copy the lineup ESPN currently has set
+
+=== Lineup Lab | fantasy-analyzer/site/analysis.js
+Q: bestLineup(roster, slots, val) takes val, a function. Why?
+A: It's a higher-order function: the caller decides how to score players. Lineup Lab uses it for this week's projection (p) => p.pw and for any future week (p) => weekValue(snap, p, w).
+M: So one function can score lineups for any week | Because JavaScript requires a callback for sorting | To run the scoring in a Web Worker | To make val private
+
+=== Lineup Lab | fantasy-analyzer/site/analysis.js
+Q: How does bestLineup add up the starters' points in one line?
+A: reduce walks the array carrying a running total that starts at 0.
+```
+const total = starters.reduce((s, x) => s + x.v, 0);
+```
+M: starters.reduce((s, x) => s + x.v, 0) | starters.map((x) => x.v).length | starters.filter((x) => x.v).sum() | starters.forEach((x) => total + x.v)
+
+=== Lineup Lab | fantasy-analyzer/site/analysis.js
+Q: INJURY_KEEP[p.i] ?? 1: why ?? and not ||?
+A: ?? only falls back when the left side is null or undefined. || also falls back on 0, '' and false, which can quietly replace a real value.
+M: ?? only falls back on null or undefined, not on 0 | ?? is just a shorter way to write || | ?? throws an error if the key is missing | ?? converts the value to a number
+
+=== Lineup Lab | fantasy-analyzer/site/analysis.js
+Q: How does playoffOdds() estimate your playoff chances?
+A: Monte Carlo simulation: it plays out the rest of the season 5,000 times with random scores around each team's projection, then counts how often you make it.
+M: It simulates the rest of the season 5,000 times and counts | It looks up ESPN's playoff odds | It divides wins by games played | It asks Sleeper's API
+
+=== Lineup Lab | fantasy-analyzer/site/analysis.js
+Q: Math.random() gives evenly spread numbers. How does playoffOdds get bell-curve (normal) random scores?
+A: The Box-Muller transform turns two even random numbers into one normally distributed number.
+```
+let u = 0; while (!u) u = Math.random();
+return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * Math.random());
+```
+M: The Box-Muller transform | Rounding Math.random() to one decimal | Averaging two Math.random() calls | Math.normal()
+
+=== Lineup Lab | fantasy-analyzer/site/app.js
+Q: What does esc() do, and why does app.js run names through it before building HTML?
+A: It turns & < > " ' into HTML entities. Text from ESPN then shows as text instead of running as HTML or script, which prevents XSS (cross-site scripting).
+```
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', ... }[c]));
+```
+M: It escapes HTML characters so outside text can't run as code (XSS) | It removes extra spaces from player names | It encrypts names before saving them | It shortens long names to fit on phones
+
+=== Lineup Lab | fantasy-analyzer/site/app.js
+Q: app.js puts one click listener on .tabs instead of one on each button. What's this pattern called?
+A: Event delegation. Clicks bubble up to the parent, and e.target.closest('button') finds which button was hit. It also works for buttons added later.
+```
+document.querySelector('.tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  ...
+});
+```
+M: Event delegation | Event capturing | Callback hell | Debouncing
+
+=== Lineup Lab | fantasy-analyzer/site/refresh.js
+Q: The Refresh button needs a GitHub token. Why is it pasted into the browser instead of written in the code?
+A: Anything in a public site's code is public. Each device keeps its own token in localStorage, sends it only to api.github.com, and the token is limited to running this one repo's Actions.
+M: A public website can't keep secrets, so each device stores its own limited token | Tokens in code expire faster | GitHub blocks tokens inside JavaScript files | localStorage encrypts the token automatically
+
+=== Lineup Lab | fantasy-analyzer/site/refresh.js
+Q: What does this helper do, and how did refresh.js use it?
+A: It returns a Promise that resolves after ms milliseconds, so await sleep(4000) pauses an async function. refresh.js used it to check the workflow run every few seconds (polling) until it finished.
+```
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+```
+M: Pauses an async function; used to poll the workflow until it finished | Freezes the whole browser for ms milliseconds | Puts the phone to sleep to save battery | Cancels a fetch after ms milliseconds
+
+=== Lineup Lab | fantasy-analyzer/site/refresh.js
+Q: Why does gh() return null when res.status === 204?
+A: 204 means No Content: success with an empty body. Calling res.json() on it would throw, so the function returns null.
+M: 204 means success with no body, so .json() would fail | 204 means the token expired | 204 means try again later | 204 means the page was not found
+
+=== Deuce Card Room | deuce-card-room/README.md
+Q: Deuce Card Room has no framework and no build step. What does that mean, and what's the trade-off?
+A: It's one index.html with hand-written HTML, CSS and JavaScript that browsers run as-is. It's fast and simple to deploy, but you organize all the code yourself instead of using React-style components.
+M: One plain HTML/CSS/JS file the browser runs as-is; simple, but you organize everything yourself | It's written in React but compiled in advance | It runs on a Node server that builds each page | It needs Parcel to bundle before it can run
+
+=== Deuce Card Room | deuce-card-room/index.html
+Q: Why keep the game rules in a separate script id="engine" block with no access to the page?
+A: The engine is pure functions (rules and math only). Keeping it apart from the interface makes it easy to test and reuse, and a bug in the UI can't change the math.
+```
+<script id="engine">
+window.DCR=(()=>{
+  function val(cards){ ... }
+  ...
+  return { val, isBJ, strategy, ... };
+})();
+</script>
+```
+M: Pure rules and math, separate from the UI, so they're easy to test | Scripts with an id load faster | Browsers require games to be in their own script | So it can be hidden from players
+
+=== Deuce Card Room | deuce-card-room/tests/load-engine.mjs
+Q: How do the tests use the exact engine code the app runs?
+A: They read index.html, pull out the engine block with a regex, and run it in a sandbox with Node's vm module. There's no separate copy that could drift out of sync.
+```
+const match = html.match(/<script id="engine">([\s\S]*?)<\/script>/);
+vm.runInNewContext(match[1], sandbox);
+export const DCR = sandbox.window.DCR;
+```
+M: They extract the engine block from index.html and run it with node:vm | They keep a second copy of the engine in the tests folder | They open the app in Puppeteer and click through it | They import index.html as an ES module
+
+=== Deuce Card Room | deuce-card-room/tests/blackjack.test.mjs
+Q: What testing tools do Deuce's tests use, and when do they run?
+A: Node's built-in test runner (node:test) and node:assert/strict, with no extra libraries. npm test runs them locally, and GitHub Actions runs them on every push and pull request.
+M: node:test and node:assert, run on every push by GitHub Actions | Jest and React Testing Library, run by hand | Mocha and Chai, run nightly | Cypress, run only before releases
+
+=== Deuce Card Room | deuce-card-room/index.html
+Q: How does val() count a blackjack hand with Aces?
+A: Count every Ace as 11 first. While the total is over 21 and an Ace is still counted as 11, subtract 10. If an 11-Ace remains, the hand is soft.
+```
+function val(cards){let t=0,a=0;
+  for(const c of cards){if(c.r===14){t+=11;a++}else t+=Math.min(c.r,10)}
+  while(t>21&&a){t-=10;a--}
+  return{t,soft:a>0}}
+```
+M: Count Aces as 11, then subtract 10 per Ace while over 21 | Count Aces as 1, then add 10 at the end | Count every Ace as 11 always | Ask the player whether each Ace is 1 or 11
+
+=== Deuce Card Room | deuce-card-room/index.html
+Q: The strategy coach's strategy() returns R('S', why). What is that object, and why include why?
+A: An object like {a: 'S', why: 'Stand on hard 17...'}: the best action plus a sentence explaining it. Returning both lets the coach grade your move and teach the reason.
+M: The action plus an explanation, so the coach can teach why | Just the action letter as a string | A Promise that resolves after the dealer plays | The dealer's next card
+
+=== Deuce Card Room | deuce-card-room/index.html
+Q: How does the Fisher-Yates shuffle work, and why not use sort(() => Math.random() - 0.5)?
+A: Walk from the end; swap each card with a random card at or before it. Every order is equally likely. The sort trick is biased: some orders come up more than others.
+```
+function shuffle(a){for(let i=a.length-1;i>0;i--){
+  const j=Math.floor(Math.random()*(i+1));
+  [a[i],a[j]]=[a[j],a[i]];}return a}
+```
+M: Swap each card with a random earlier one; the sort trick is biased | It sorts cards by suit, then rank | It deals cards from the bottom of the deck | It's the same as sort(() => Math.random() - 0.5)
+
+=== Deuce Card Room | deuce-card-room/index.html
+Q: eval5() turns a poker hand into one number. Why?
+A: The hand category (pair, flush...) and the tie-breaker ranks are packed into one base-15 number, so comparing two hands is just a > b.
+```
+let s=cat;for(let k=0;k<5;k++)s=s*15+(tb[k]||0);return s;
+```
+M: So comparing two hands is a simple a > b | To save the hand in localStorage | Because poker hands are stored in hex | To shuffle the hand faster
+
+=== Deuce Card Room | deuce-card-room/index.html
+Q: In Hold'em you have 7 cards but a hand is 5. How does best() choose, and how does combos() avoid repeat work?
+A: It scores every 5-card combination (21 of them for 7 cards) and keeps the highest. combos(n) saves its list in COMB the first time, so later calls reuse it. That's memoization.
+M: Scores all 21 five-card combos; combos() caches its list (memoization) | Keeps your two cards plus the top three on the board | Picks the five highest-ranked cards | Asks the equity function to choose
+
+=== Deuce Card Room | deuce-card-room/index.html
+Q: How do the AI regulars (Rosa, Dutch, Mei) estimate their chance of winning a hand?
+A: equity() deals out the unknown cards at random about 160 times and counts how often the hand wins. That's a Monte Carlo estimate, the same idea as Lineup Lab's playoff odds.
+M: Monte Carlo: deal random remaining cards about 160 times and count wins | They look up the hand in a preflop chart | They can see your cards | A fixed percentage for each hand category
+
+=== Deuce Card Room | deuce-card-room/index.html
+Q: How does Deuce make sound effects without any audio files?
+A: The Web Audio API. An AudioContext creates oscillators (tones) and noise, sends them through gain nodes (volume), and schedules them in time. Browsers start it suspended until you tap, so ac() calls resume().
+```
+const o=ctx.createOscillator(), g=ctx.createGain();
+o.type=type; o.frequency.setValueAtTime(freq,t);
+```
+M: The Web Audio API: AudioContext, oscillators and gain nodes | Base64 MP3 files inside the HTML | The audio HTML tag with a CDN | The Vibration API
+
+=== Deuce Card Room | deuce-card-room/index.html
+Q: Why is nearly every localStorage call in Deuce wrapped in try/catch?
+A: localStorage can throw in private browsing or when storage is blocked or full. Catching the error keeps the game running; it just doesn't save.
+M: localStorage can throw in private mode or when full | try/catch makes localStorage faster | It's required for JSON.parse only | To hide saved data from other tabs
+
+=== Deuce Card Room | deuce-card-room/index.html
+Q: How do felts and card backs switch themes with document.body.dataset.felt = PROF.felt?
+A: It sets a data-felt attribute on body, and the CSS has rules like body[data-felt="blue"] that restyle the table. JavaScript changes one attribute and CSS does the rest.
+M: It sets data-felt on body, and CSS attribute selectors restyle the page | It swaps in a different stylesheet file | It reloads the page with a query string | It edits each element's inline style
+
+=== Deuce Card Room | deuce-card-room/sw.js
+Q: Deuce's service worker uses network-first for app files and cache-first for fonts. Why the difference?
+A: App files change with updates, so it checks GitHub first and falls back to the saved copy offline. Fonts never change, so the saved copy is used right away.
+M: App files change, so check the network first; fonts never change, so use the cache | Fonts are bigger, so they skip the cache | Network-first is always faster | GitHub Pages requires it
+
+=== Deuce Card Room | deuce-card-room/sw.js
+Q: Why does Deuce's service worker name its cache 'deuce-v25', and what happens in activate?
+A: Changing the version name makes phones install a fresh cache on the next update. activate then deletes every cache whose name isn't the current one.
+M: A new version name forces a fresh cache; activate deletes the old ones | It counts how many times the app was opened | Browsers only allow 25 caches | It's the Supabase project ID
+
+=== Deuce Card Room | deuce-card-room/cloud.js
+Q: What is Supabase, and what does Deuce use it for?
+A: A hosted backend: a Postgres database, user sign-in, and Realtime updates, used from the browser through supabase-js. Deuce uses it for cloud saves, the leaderboard and live Hold'em tables.
+M: A hosted Postgres database with sign-in and Realtime, used for saves, the leaderboard and live tables | A CSS framework for casino themes | A testing service for the game engine | A CDN that hosts the fonts
+
+=== Deuce Card Room | deuce-card-room/supabase/schema.sql
+Q: What does Row Level Security do in Deuce's saves table?
+A: The database checks a rule on every row. With auth.uid() = user_id, a signed-in player can only read and write their own save, even if someone edits the JavaScript.
+```
+create policy "Players read their own save" on public.saves
+  for select to authenticated using ((select auth.uid()) = user_id);
+```
+M: The database only lets each player read and write their own row | It encrypts each row with the player's password | It hides the table from the Supabase dashboard | It limits each player to one request per second
+
+=== Deuce Card Room | deuce-card-room/cloud.js
+Q: The Supabase publishable key is in the public code. Why is that OK?
+A: The key only identifies the project. What anyone can actually do is enforced by the database's Row Level Security policies, not by keeping the key secret.
+M: Row Level Security enforces access, so the key alone can't read others' data | The key is encrypted in the browser | GitHub hides it automatically | It expires every 10 minutes
+
+=== Deuce Card Room | deuce-card-room/supabase/schema.sql
+Q: What does references auth.users on delete cascade do?
+A: Each save is linked to a user. When that user account is deleted, the database automatically deletes their save and player rows too.
+M: Deleting the user automatically deletes their rows | Copies the user's email into every row | Prevents the user from ever being deleted | Deletes the whole table when a user leaves
+
+=== Deuce Card Room | deuce-card-room/supabase/schema.sql
+Q: delete_my_account() is a security definer function. What does that mean, and how is it kept safe?
+A: It runs with the function owner's rights, so it can delete from auth.users, which players can't touch directly. It only deletes auth.uid(), the caller, and anonymous users can't run it.
+M: It runs with the owner's rights but only deletes the caller's own account | It lets any user delete any account | It runs in the browser instead of the database | It needs the admin password each time
+
+=== Deuce Card Room | deuce-card-room/cloud.js
+Q: What does upsert do in sb.from('saves').upsert({ user_id, data })?
+A: Insert the row if it doesn't exist, or update it if it does (matched on the primary key, user_id). One call handles both a first save and every save after.
+M: Inserts the row, or updates it if it already exists | Always inserts a new row | Only updates and fails if the row is missing | Deletes, then re-inserts the table
+
+=== Deuce Card Room | deuce-card-room/cloud.js
+Q: Why .maybeSingle() when fetching a player's save?
+A: It returns one row or null. A brand-new player has no save yet, and .single() would treat that as an error.
+M: It returns null instead of an error when there's no row yet | It picks a random row | It returns the first 100 rows | It locks the row while reading
+
+=== Deuce Card Room | deuce-card-room/cloud.js
+Q: The leaderboard listens for database changes but waits 400 ms before reloading. What is this technique, and why use it?
+A: Debouncing: each change restarts a short timer, so a burst of updates causes one reload instead of dozens.
+```
+const soon = () => { clearTimeout(timer); timer = setTimeout(load, 400); };
+sb.channel('players-feed').on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, soon).subscribe();
+```
+M: Debouncing: a burst of changes triggers one reload | Throttling the database to 400 ms per query | Caching the leaderboard for 400 ms | Polling every 400 ms
+
+=== Deuce Card Room | deuce-card-room/cloud.js
+Q: How does the live Hold'em table know who's sitting down?
+A: Supabase Realtime presence. Each player calls ch.track(...) with their state on a shared channel, and ch.presenceState() lists everyone currently connected.
+M: Realtime presence: each player tracks their state on a shared channel | The table polls the players table every second | Players email their seat to the host | Each phone scans for nearby phones
+
+=== Deuce Card Room | .github/workflows/keep-supabase-awake.yml
+Q: Why does Deuce have a workflow that queries Supabase every 3 days?
+A: Free Supabase projects pause after about a week without activity. A scheduled read-only request keeps sign-in, saves and the leaderboard running.
+M: Free Supabase projects pause when idle, so a scheduled request keeps it awake | To back up the database to GitHub | To run the tests against real data | To reset the leaderboard
+
+=== Deuce Card Room | deuce-card-room/scripts/build-www.mjs
+Q: What is Capacitor, and what does build-www.mjs change for the iPhone app?
+A: Capacitor wraps a web app as a native iOS app. The build copies the site to www/, swaps Google Fonts and the Supabase CDN for bundled files so it works offline, and removes the service worker.
+M: Wraps the web app as a native app; the build bundles fonts and libraries and drops the service worker | Rewrites the app in Swift | Uploads the app to the App Store automatically | Converts the JavaScript to React Native
 
 </script>
 

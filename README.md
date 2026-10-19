@@ -4,7 +4,7 @@ Offline flashcards for reviewing what I learned in CareerFoundry's Frontend, Ful
 
 **Open it:** https://cody-ayers.github.io/code-recall/
 
-- 162 cards in 13 sections, from HTML & CSS to Django
+- 208 cards in 15 sections: my CareerFoundry coursework from HTML & CSS to Django, plus the code behind Lineup Lab and Deuce Card Room
 - Multiple-choice and flip-card modes
 - Spaced repetition: cards you miss come back sooner
 - Installable PWA: add it to your home screen and it works offline

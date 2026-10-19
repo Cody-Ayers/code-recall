@@ -1,6 +1,6 @@
 // Code Recall service worker: saves the app on the phone so it opens offline.
 // Bump VERSION whenever cards or the app change, so phones pick up the update.
-const VERSION = 'code-recall-v1';
+const VERSION = 'code-recall-v2';
 const APP_FILES = [
   './',
   './index.html',
