@@ -1154,7 +1154,7 @@ M: Commits only when the data actually changed | Always commits, even with no ch
 Q: What does script type="module" let app.js do?
 A: Use import and export between files, like import * as A from './analysis.js'. Modules also run in strict mode and get their own scope instead of sharing globals.
 ```
-<script type="module" src="app.js"></script>
+<script type="module" src="app.js">@@/script>
 // app.js
 import * as A from './analysis.js';
 ```
@@ -1260,7 +1260,7 @@ window.DCR=(()=>{
   ...
   return { val, isBJ, strategy, ... };
 })();
-</script>
+@@/script>
 ```
 M: Pure rules and math, separate from the UI, so they're easy to test | Scripts with an id load faster | Browsers require games to be in their own script | So it can be hidden from players
 
@@ -1422,7 +1422,7 @@ M: Wraps the web app as a native app; the build bundles fonts and libraries and 
   // ---- parse cards ----
   function hash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return 'c' + (h >>> 0).toString(36); }
   const CARDS = [];
-  const blocks = document.getElementById('cards').textContent.split(/^=== /m).slice(1);
+  const blocks = document.getElementById('cards').textContent.replace(/@@\/script/gi, '</script').split(/^=== /m).slice(1);
   for (const b of blocks) {
     const lines = b.split('\n');
     const [deck, src] = lines[0].split('|').map(s => s && s.trim());
