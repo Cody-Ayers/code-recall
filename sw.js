@@ -1,6 +1,6 @@
 // Code Recall service worker: saves the app on the phone so it opens offline.
 // Bump VERSION whenever cards or the app change, so phones pick up the update.
-const VERSION = 'code-recall-v3';
+const VERSION = 'code-recall-v4';
 const APP_FILES = [
   './',
   './index.html',
@@ -31,7 +31,7 @@ self.addEventListener('fetch', (event) => {
 
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-cache' }) // skip the browser's 10-minute copy
         .then((res) => {
           const copy = res.clone();
           caches.open(VERSION).then((cache) => cache.put('./index.html', copy));
